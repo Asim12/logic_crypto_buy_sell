@@ -1,0 +1,20 @@
+{
+  "name": "logic-crypto-buy-sell",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node ./bin/www"
+  },
+  "dependencies": {
+    "aws-sdk": "^2.1048.0",
+    "cookie-parser": "~1.4.4",
+    "debug": "~2.6.9",
+    "express": "~4.16.1",
+    "http-errors": "~1.6.3",
+    "jade": "^0.31.2",
+    "mongodb": "^4.2.2",
+    "morgan": "~1.9.1",
+    "node-binance-api": "^0.13.1",
+    "node-cron": "^3.0.0"
+  }
+}
