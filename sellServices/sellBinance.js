@@ -45,7 +45,7 @@ module.exports = {
 
                         if(sellOrder[orderIndex]['quantity_behaviour'] == 'coins'){
 
-                            if(buy_symbol == 'BTCUSDT' || buy_symbol == 'ETHBTC'){
+                            if(buy_symbol == 'BTCUSDT' || buy_symbol == 'BUSDUSDT'){
 
                                 let response = await binance.futuresMarketBuy(use_wallet, quantity)
                                 console.log('response if ===>>>>>>>>>>>>', response);
@@ -70,7 +70,7 @@ module.exports = {
                             helperCon.updateOrder(order_id,  newObjectSet, collectionName)
                         }else if(sellOrder[orderIndex]['quantity_behaviour'] == 'usd'){
 
-                            if(buy_symbol == 'BTCUSDT' || buy_symbol == 'ETHBTC'){
+                            if(buy_symbol == 'BTCUSDT' || buy_symbol == 'BUSDUSDT'){
 
                                 let symbolPrice = await helper.getMarketPrice(use_wallet, 'market_prices_binance')
                                 console.log('symbolPrice.price=====>>>>>>>>>>>>>>', symbolPrice.price);
@@ -105,7 +105,7 @@ module.exports = {
                         }else if(sellOrder[orderIndex]['quantity_behaviour'] == 'percentage'){
 
                             let percentage  =  await helperCon.getBalancePercentage(user_id, buy_symbol, quantity);  // in this case buy_symbol mean sell this and use wallet mean buy this 
-                            if(buy_symbol == 'BTCUSDT' || buy_symbol == 'ETHBTC'){
+                            if(buy_symbol == 'BTCUSDT' || buy_symbol == 'BUSDUSDT'){
 
                                 let response = await binance.futuresMarketBuy(use_wallet, percentage)
                                 console.log('response ===>>>>>>>>>>>>', response);

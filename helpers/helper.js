@@ -17,8 +17,7 @@ module.exports = {
     getEventBuyOrders : () => {
         return new Promise(resolve => {
             conn.then(async(db) => {
-                let currentTime = new Date();
-                let order = await db.collection('order_binance').find({ execuation_time : { execuation_count : { '$gte' : 0 }, '$gte' : currentTime }  , status : "new", exchange : "binance", action : "buy", type : "event"}, {projection : {buy_symbol : "$buy_symbol", use_wallet : "$use_wallet", quantity : "$quantity", quantity_behaviour : "$quantity_behaviour", user_id : "$user_id"  }}).limit(5).toArray()
+                let order = await db.collection('order_binance').find({ expiredForChecking : {'$exists' : false} , startTime : {'$lte' : new Date()}, checkingStartCount : {'$gt' : 0}, status : { "$in" : ["active" ,"new"] }, exchange : "binance", action : "buy", type : "event"}).limit(5).toArray()
                 resolve(order)  
             })
         })
@@ -51,7 +50,6 @@ module.exports = {
                             user_id     :  "$user_id",
                             apiKey      :  "$apiKey",
                             secretKey   :  "$secretKey"
-
                         }
                     },
                 ];
@@ -73,8 +71,6 @@ module.exports = {
                 }else{
 
                 }
-
-
                 let calculatePercenatge = [
                     {
                         '$match' : {
@@ -178,19 +174,17 @@ module.exports = {
                     time    : {'$lte' : startTime } 
                 }
                 let data = await db.collection(collectionName).find(SearchObject).sort({time : -1}).limit(1).toArray()
-                console.log('dataNew =====>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>' , data)
 
                 let SearchObjectNext = {
                     symbol  : symbol,
                     time    : {'$gte' : endTime } 
                 }
                 let dataNew = await db.collection(collectionName).find(SearchObjectNext).sort({time : 1}).limit(1).toArray()
-                console.log('dataNew =====>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>',  dataNew)
 
-                let volumeStart = data[0]['volume']
-                let volumeEnd   = dataNew[0]['volume']
+                let volumeStart = (data.length > 0) ? (data[0]['volume']) : 0;
+                let volumeEnd   = (dataNew.length > 0) ? (dataNew[0]['volume']) : 0;
 
-                let volume = ( volumeStart / volumeEnd ) * 100 ; // volume in percentage 
+                let volume = ( volumeStart.length > 0 && volumeEnd.length > 0) ? ( (volumeStart / volumeEnd ) * 100) : 0;
                 resolve(volume)
             })
         })
@@ -207,18 +201,17 @@ module.exports = {
                     time    : {'$lte' : startTime } 
                 }
                 let data = await db.collection(collectionName).find(SearchObject).sort({created_date : -1}).limit(1).toArray()
-                console.log('dataNew =====>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>' , data)
 
                 let SearchObjectNext = {
                     symbol  : symbol,
                     time    : {'$gte' : endTime } 
                 }
                 let dataNew = await db.collection(collectionName).find(SearchObjectNext).sort({created_date : 1}).limit(1).toArray()
-                console.log('dataNew =====>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>',  dataNew)
 
-                let startPrice =  data[0]['price'] ;
-                let endPrice   =  dataNew[0]['price'] ;
-                let CheckPrice  =   endPrice  - startPrice ;
+                let startPrice =  (data.length > 0 ) ? data[0]['price'] : 0 ;
+                let endPrice   =  (dataNew.length > 0 ) ? dataNew[0]['price'] : 0 ;
+
+                let CheckPrice  =   ( startPrice > 0 && endPrice > 0 ) ? ( endPrice  - startPrice ) : 0 ;
                 resolve(CheckPrice)
             })
         })
@@ -232,4 +225,33 @@ module.exports = {
         })
     },
 
+    makeTheEndTime : (time , convertionType, value) => {
+        return new Promise(resolve => {
+
+            let created_date  =  new Date( time );
+            if(convertionType == 'm'){
+
+                var endTime1 = created_date.setMinutes(created_date.getMinutes() + value );
+                let endTime  = new Date(endTime1);
+                resolve(endTime);
+            }else if(convertionType == 'h'){
+
+                var endTime1 = created_date.setHours(created_date.getHours() + value)
+                let endTime = new Date(endTime1);
+                resolve(endTime);
+            }else if(convertionType == 'd'){
+
+                var endTime1 = created_date.setDate(created_date.getDate() + value);
+                let endTime  = new Date(endTime1);
+                resolve(endTime);
+            }else if(convertionType == 'w'){ //week
+                
+                var endTime1 = created_date.setDate(created_date.getDate() + (value * 7))
+                let endTime = new Date(endTime1);
+                resolve(endTime);
+            }else{
+                resolve(false);
+            }
+        })
+    },
 }

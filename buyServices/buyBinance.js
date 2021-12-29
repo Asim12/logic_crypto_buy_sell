@@ -46,7 +46,7 @@ module.exports = {
 
                         if(order[orderIndex]['quantity_behaviour'] == 'coins'){
                             
-                            if(use_wallet == 'BTCUSDT' || use_wallet == 'ETHBTC'){
+                            if(use_wallet == 'BTCUSDT' || use_wallet == 'BUSDUSDT'){
                                 
                                 let response = await binance.futuresMarketBuy(buy_symbol, quantity)
                                 console.log('response if ===>>>>>>>>>>>>', response);
@@ -71,7 +71,7 @@ module.exports = {
                             helperCon.updateOrder(order_id,  newObjectSet, collectionName)
                         }else if(order[orderIndex]['quantity_behaviour'] == 'usd'){
 
-                            if(buy_symbol == 'BTCUSDT' || buy_symbol == 'ETHBTC'){
+                            if(buy_symbol == 'BTCUSDT' || buy_symbol == 'BUSDUSDT'){
 
                                 let symbolPrice = await helperCon.getMarketPrice(buy_symbol, 'market_prices_binance')
                                 console.log('symbolPrice.price=====>>>>>>>>>>>>>>', symbolPrice.price);
