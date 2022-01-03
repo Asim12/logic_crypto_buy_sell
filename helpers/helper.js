@@ -2,13 +2,15 @@ const conn = require('../DataBase/connection');
 const MongoClient =   require('mongodb').MongoClient;
 const objectId    =   require('mongodb').ObjectId;
 const { IoTJobsDataPlane } = require("aws-sdk");
+const Binance = require('node-binance-api');
+
 
 module.exports = { 
 
     getDirectBuyOrders : () => {
         return new Promise(resolve => {
             conn.then(async(db) => {
-                let order = await db.collection('order_binance').find({type : "direct", status : "new", exchange : "binance", action : "buy"}, {projection : {buy_symbol : "$buy_symbol", use_wallet : "$use_wallet", quantity : "$quantity", quantity_behaviour : "$quantity_behaviour", user_id : "$user_id"  }}).limit(5).toArray()
+                let order = await db.collection('order_binance').find({type : "direct", status : "new", exchange : "binance", action : "buy"}, {projection : {buy_symbol : "$buy_symbol", use_wallet : "$use_wallet", quantity : "$quantity", quantity_behaviour : "$quantity_behaviour", user_id : "$user_id"  }}).limit(1).toArray()
                 resolve(order)  
             })
         })
@@ -22,6 +24,64 @@ module.exports = {
             })
         })
     },//end helper
+
+    getTimerBuyOrders : () => {
+        return new Promise(resolve => {
+            conn.then(async(db) => {
+                let order = await db.collection('order_binance').find({ timeCondition : "every",startTime : {'$lte' : new Date()}, status : {'$in' : ["new", "active"]},action : "buy", type: "timer", checkingStartCount : {'$gt' : 0}, expiredForChecking: {'$exists': false }   }).limit(5).toArray()
+                resolve(order)  
+            })
+        })
+    },//end helper
+
+
+    getTimerSellOrders : () => {
+        return new Promise(resolve => {
+            conn.then(async(db) => {
+                let order = await db.collection('order_binance').find({ timeCondition : "every",startTime : {'$lte' : new Date()}, status : {'$in' : ["new", "active"]},action : "sell", type: "timer", checkingStartCount : {'$gt' : 0}, expiredForChecking: {'$exists': false }   }).limit(5).toArray()
+                resolve(order)  
+            })
+        })
+    },//end helper
+
+    getTimerOnBuyOrders : () => {
+        return new Promise(resolve => {
+            conn.then(async(db) => {
+                let order = await db.collection('order_binance').find({ startTime : {'$lte' : new Date()}, status : "new", action : "buy", timeCondition : "on", type: "timer", checkingStartCount : {'$gt' : 0}, expiredForChecking: {'$exists': false }   }).limit(5).toArray()
+                resolve(order)  
+            })
+        })
+    },//end helper
+
+    getTimerOnSellOrders : () => {
+        return new Promise(resolve => {
+            conn.then(async(db) => {
+                let order = await db.collection('order_binance').find({ startTime : {'$lte' : new Date()}, status : "new", action : "sell", timeCondition : "on", type: "timer", checkingStartCount : {'$gt' : 0}, expiredForChecking: {'$exists': false }   }).limit(5).toArray()
+                resolve(order)  
+            })
+        })
+    },//end helper
+
+
+    getTimerRightNowBuyOrders : () => {
+        return new Promise(resolve => {
+            conn.then(async(db) => {
+                let order = await db.collection('order_binance').find({ status : {'$in' : ["new", "active"]},action : "buy",timeCondition : "right_now", type: "timer", checkingStartCount : {'$gt' : 0}, expiredForChecking: {'$exists': false }   }).limit(5).toArray()
+                resolve(order)  
+            })
+        })
+    },//end helper
+
+
+    getTimerRightNowSellOrders : () => {
+        return new Promise(resolve => {
+            conn.then(async(db) => {
+                let order = await db.collection('order_binance').find({ status : {'$in' : ["new", "active"]},action : "sell",timeCondition : "right_now", type: "timer", checkingStartCount : {'$gt' : 0}, expiredForChecking: {'$exists': false }   }).limit(5).toArray()
+                resolve(order)  
+            })
+        })
+    },//end helper
+    
 
     getDirectSellOrders : () => {
         return new Promise(resolve => {
@@ -217,6 +277,39 @@ module.exports = {
         })
     },
 
+    getPriceCheckingForusdInCoinMarketCap : (symbol, startTime, endTime, exchangeName) => {
+        return new Promise(resolve => {
+            conn.then(async(db) => {
+                
+                let symbolNew = symbol.split("BTC");
+                
+                if(symbolNew.length <= 1){
+                    
+                    symbolNew = symbol.split("USDT");
+                }
+
+                let SearchObject = {
+                    symbol  : symbolNew,
+                    created_date    : {'$lte' : startTime } 
+                }
+                let data = await db.collection('market_prices_coin_market_cap').find(SearchObject).sort({created_date : -1}).limit(1).toArray()
+
+                let SearchObjectNext = {
+                    symbol  : symbolNew,
+                    created_date    : {'$gte' : endTime } 
+                }
+                let dataNew = await db.collection('market_prices_coin_market_cap').find(SearchObjectNext).sort({created_date : 1}).limit(1).toArray()
+
+                let startPrice =  (data.length > 0 ) ? data[0]['price'] : 0 ;
+                let endPrice   =  (dataNew.length > 0 ) ? dataNew[0]['price'] : 0 ;
+
+                let CheckPrice  =   ( startPrice > 0 && endPrice > 0 ) ? ( endPrice  - startPrice ) : 0 ;
+                resolve(CheckPrice)
+            })
+        })
+    },
+
+
     getVolumeCheckingForBTC : (symbol, startTime, endTime, exchangeName) => {
         return new Promise(resolve => {
             conn.then(async(db) => {
@@ -254,4 +347,87 @@ module.exports = {
             }
         })
     },
+
+
+    getCoinMarketCapVolumeCheckingForPercentage : (symbol, startTime, endTime, exchangeName) => {
+        return new Promise(resolve => {
+            conn.then(async(db) => {
+                
+                let symbolNew = symbol.split("BTC");
+                
+                if(symbolNew.length <= 1){
+                    
+                    symbolNew = symbol.split("USDT");
+                }
+
+                let SearchObject = {
+                    symbol          :   symbolNew,
+                    created_date    :   {'$lte' : startTime } 
+                }
+                let data = await db.collection('market_prices_coin_market_cap').find(SearchObject).sort({created_date : -1}).limit(1).toArray()
+
+                let SearchObjectNext = {
+                    symbol          :   symbol,
+                    created_date    :   {'$gte' : endTime } 
+                }
+                let dataNew = await db.collection('market_prices_coin_market_cap').find(SearchObjectNext).sort({created_date : 1}).limit(1).toArray()
+
+                let volumeStart = (data.length > 0) ? (data[0]['volume_24h']) : 0;
+                let volumeEnd   = (dataNew.length > 0) ? (dataNew[0]['volume_24h']) : 0;
+
+                let volume = ( volumeStart.length > 0 && volumeEnd.length > 0) ? ( (volumeStart / volumeEnd ) * 100) : 0;
+                resolve(volume)
+            })
+        })
+    },
+
+    //balance update call
+    balanceUpdate : (user_id) => {
+        return new Promise(resolve => {
+            conn.then(async (db) => { 
+
+                let exchangeDetails = await db.collection('exchanges').find({user_id : user_id.toString(),  exchange : "binance"}).toArray()
+
+
+                let lookup = [
+                    {
+                        '$group' : {
+                            _id       : '$symbol',  
+                            coin_name : {'$first' : '$coin_name'}
+                        }
+                    }
+                ]
+                let coins = await db.collection('coins_binance').aggregate(lookup).toArray()
+    
+                if(exchangeDetails.length > 0){
+                    const binance = new Binance().options({
+                        APIKEY      :   exchangeDetails[0]['apiKey'],
+                        APISECRET   :   exchangeDetails[0]['secretKey']
+                    });
+
+                    binance.balance(async (error, balances) => {
+                        if ( error ){
+
+                            db.collection('exchanges').updateOne({ user_id : exchangeDetails[0]['user_id']}, {'$set' : { updated_time : new Date()}})
+                            console.log('error')
+                            return true;
+                        }else{
+                            for( let coinIteration = 0 ; coinIteration < coins.length ;  coinIteration++ ){
+                                let coinName = coins[coinIteration]['coin_name'];
+                                
+                                let insertBalance = {
+                                    balance  :  (balances[coinName].available > 0) ? parseFloat(balances[coinName].available) : parseFloat(0)  ,
+                                    onOrder  :  (balances[coinName].onOrder > 0) ? parseFloat(balances[coinName].onOrder) : parseFloat(0) ,
+                                    create_date : new Date()
+                                } 
+                                db.collection('balance_binance').updateOne({symbol : coins[coinIteration]['_id'], user_id :  exchangeDetails[0]['user_id']}, {'$set' : insertBalance}, {upsert:true})
+                            }//end loop
+                            db.collection('exchanges').updateOne({ user_id : exchangeDetails[0]['user_id']}, {'$set' : { updated_time : new Date()}})
+                        }//end else
+                    });
+                }
+            })
+        })
+    },//end balance 
+
 }

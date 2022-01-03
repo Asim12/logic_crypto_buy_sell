@@ -6,7 +6,6 @@ var helperCon = require("../helpers/helper");
 module.exports = {
     directBuy : () => {
         conn.then(async (db) => { 
-
             let checkStatus = await helperCon.checkTradingIsOn('binance_trading_status');
             if(checkStatus > 0){
 
@@ -19,11 +18,11 @@ module.exports = {
 
                     for(let orderIndex = 0 ; orderIndex < order.length ;  orderIndex++){
 
-                        console.log('order id is : ====>>>>>>>>>>> ', order[orderIndex]['_id'] )
-                        console.log('order buy symbol : ====>>>>>>>>>>> ', order[orderIndex]['buy_symbol'] )
-                        console.log('order use wallet Symbol : ====>>>>>>>>>>> ', order[orderIndex]['use_wallet'] )
-                        console.log('order quantity : ====>>>>>>>>>>> ',order[orderIndex]['quantity'] )
-                        console.log('order behaviour : ====>>>>>>>>>>> ',order[orderIndex]['quantity_behaviour'] );
+                        // console.log('order id is : ====>>>>>>>>>>> ', order[orderIndex]['_id'] )
+                        // console.log('order buy symbol : ====>>>>>>>>>>> ', order[orderIndex]['buy_symbol'] )
+                        // console.log('order use wallet Symbol : ====>>>>>>>>>>> ', order[orderIndex]['use_wallet'] )
+                        // console.log('order quantity : ====>>>>>>>>>>> ',order[orderIndex]['quantity'] )
+                        // console.log('order behaviour : ====>>>>>>>>>>> ',order[orderIndex]['quantity_behaviour'] );
                         console.log('user id : ====>>>>>>>>>>> ',order[orderIndex]['user_id'] );
                         
                         let quantity   =   parseFloat(order[orderIndex]['quantity']);
@@ -33,24 +32,28 @@ module.exports = {
                         let use_wallet =   order[orderIndex]['use_wallet']
                         
                         let userApiKeyDetails =  await helperCon.getUserApiKeyDetails(user_id, 'binance')
+                        if(userApiKeyDetails.length == 0 ){
+
+                            return true 
+                        }
+
                         let apiKey     =   userApiKeyDetails[0]['apiKey']
                         let secretKey  =   userApiKeyDetails[0]['secretKey']
                         
                         console.log('api Key ==============>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>', userApiKeyDetails[0]['apiKey'])
                         console.log('secret Key ==============>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>', userApiKeyDetails[0]['secretKey'])
-
+                        
                         const binance = new Binance().options({
                             APIKEY      :   apiKey,
                             APISECRET   :   secretKey
                         });
-
                         if(order[orderIndex]['quantity_behaviour'] == 'coins'){
                             
                             if(use_wallet == 'BTCUSDT' || use_wallet == 'BUSDUSDT'){
                                 
                                 let response = await binance.futuresMarketBuy(buy_symbol, quantity)
                                 console.log('response if ===>>>>>>>>>>>>', response);
-                                db.collection('test_buy').insertOne(response)
+                                db.collection('test_buy_direct').insertOne(response)
                             }else{
                                 
                                 let responseSell = await binance.futuresMarketSell( use_wallet , quantity) ;
@@ -59,7 +62,7 @@ module.exports = {
                                 let responseBuy  = await binance.futuresMarketBuy(buy_symbol, quantity)
                                 console.log('responseBuy =>>>>>>>>>>', responseBuy);
 
-                                db.collection('sell_test').insertOne(responseSell)
+                                db.collection('test_buy_direct').insertOne(responseSell)
                                 db.collection('test_buy_else').insertOne(responseBuy)
                             }
 
@@ -140,6 +143,7 @@ module.exports = {
                             return true;
                         }
 
+                        helperCon.balanceUpdate(user_id);//for balance update 
                     }//end loop
                 }else{
 

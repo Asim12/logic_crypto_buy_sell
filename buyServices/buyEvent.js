@@ -30,7 +30,7 @@ module.exports = {
                         // console.log('order use wallet Symbol : ====>>>>>>>>>>> ', order[orderIndex]['use_wallet'] )
                         // console.log('exchange : ====>>>>>>>>>>> ', order[orderIndex]['exchange'] )
                         // console.log('user id : ====>>>>>>>>>>> ', order[orderIndex]['user_id'] );
-
+                       
                         let order_id            =   order[orderIndex]['_id'];
                         let select_coin         =   order[orderIndex]['select_coin'];
                         let has_condition       =   order[orderIndex]['has_condition'];
@@ -64,10 +64,10 @@ module.exports = {
 
                         console.log('end time after converting the minuts =============>>>>>>>>>>>>>>>>', endTime );
                         if(endTime != false) {
-
                             if(has_condition == 'volume'){
-                                
                                 if(has_checking == 'increase'){
+
+
                                     if(checking_symbol == 'percentage'){
                                         let volume = await helperCon.getVolumeCheckingForPercentage(select_coin, created_Date, endTime, exchange);
                                         console.log('volume=============>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>', volume);
@@ -182,26 +182,24 @@ module.exports = {
                                                 helperCon.updateOrder(order_id,  newObjectSet, collectionName)
                                             }else{
                     
-                                                console.log('order behaviour is missing we cannot process this order for now sorry!!!!!!!!!')
-                                                return true;
+                                                let newObjectSet = {
+                                                    checkingStartCount  :  (checkingStartCount -1),
+                                                    startTime           :  endTime,
+                                                    created_date  : new Date()
+                                                }
+                                                if( (checkingStartCount - 1) <= 0 ){
+                                                    
+                                                    newObjectSet['expiredForChecking'] = true ;
+                                                }
+                                                let collectionName = 'order_binance';
+                                                helperCon.updateOrder(order_id,  newObjectSet, collectionName)
                                             }
-                                        }else{
-
-                                            let newObjectSet = {
-
-                                                checkingStartCount  :  (checkingStartCount -1),
-                                                startTime           :  endTime,
-                                                created_date  : new Date()
-                                            }
-                                            if( (checkingStartCount - 1) <= 0 ){
-                                                
-                                                newObjectSet['expiredForChecking'] = true ;
-                                            }
-                                            let collectionName = 'order_binance';
-                                            helperCon.updateOrder(order_id,  newObjectSet, collectionName)
                                         }
-                                        //update the order count make expire if count 0 and add how much time this rule get true
-                                    }else if(checking_symbol == 'usd'){
+                                    }//code check done
+                                    
+                                    
+
+                                    else if(checking_symbol == 'usd'){
 
                                         let priceDifference = helperCon.getVolumeCheckingForusd(select_coin, created_Date, endTime, 'binance');
 
@@ -219,18 +217,6 @@ module.exports = {
 
                                         if(convertIntoUSD > checking_value){
 
-                                            // let userApiKeyDetails =  await helperCon.getUserApiKeyDetails(user_id, 'binance')
-                                            // let apiKey     =   userApiKeyDetails[0]['apiKey']
-                                            // let secretKey  =   userApiKeyDetails[0]['secretKey']
-                                            
-                                            // console.log('api Key ==============>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>', userApiKeyDetails[0]['apiKey'])
-                                            // console.log('secret Key ==============>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>', userApiKeyDetails[0]['secretKey'])
-                    
-                                            // const binance = new Binance().options({
-                                            //     APIKEY      :   apiKey,
-                                            //     APISECRET   :   secretKey
-                                            // });
-                    
                                             if(quantity_behaviour == 'coins'){
                                                 
                                                 if(use_wallet == 'BTCUSDT' || use_wallet == 'BUSDUSDT'){
@@ -251,8 +237,15 @@ module.exports = {
                                                 }
                     
                                                 let newObjectSet = {
-                                                    purchased_price_buy_symbol  : "",
-                                                    status   :  'active'
+                                                    checkingStartCount  :  (checkingStartCount -1),
+                                                    startTime           :  endTime,
+                                                    created_date  : new Date(),
+                                                    purchased_price_buy_symbol : '',
+                                                    status : 'active'
+                                                }
+                                                if( (checkingStartCount - 1) <= 0 ){
+                                                    
+                                                    newObjectSet['expiredForChecking'] = true ;
                                                 }
                                                 let collectionName = 'order_binance';
                                                 helperCon.updateOrder(order_id,  newObjectSet, collectionName)
@@ -287,8 +280,234 @@ module.exports = {
                                                 }
                                                 
                                                 let newObjectSet = {
+                                                    checkingStartCount  :  (checkingStartCount -1),
+                                                    startTime           :  endTime,
+                                                    created_date  : new Date(),
+                                                    purchased_price_buy_symbol : '',
+                                                    status : 'active'
+                                                }
+                                                if( (checkingStartCount - 1) <= 0 ){
+                                                    
+                                                    newObjectSet['expiredForChecking'] = true ;
+                                                }
+                                                let collectionName = 'order_binance';
+                                                helperCon.updateOrder(order_id,  newObjectSet, collectionName)
+                                            }else if(quantity_behaviour == 'percentage'){
+                                                
+                                                let percentageCount  =  await helperCon.getBalancePercentage(user_id, use_wallet, quantity);  
+                                                console.log('percentageCount====>>>>>>>>>>>>>>>>> ', percentageCount ) 
+                                               
+                                                if(buy_symbol == 'BTCUSDT' || buy_symbol == 'ETHBTC'){
+                    
+                                                    let response = await binance.futuresMarketBuy(buy_symbol, percentageCount)
+                                                    console.log('response ===>>>>>>>>>>>>', response);
+                                                    db.collection('test_buy').insertOne(response)
+                                                }else{
+                                                    
+                                                    let responseSell = await binance.futuresMarketSell( use_wallet , percentageCount) ;
+                                                    console.log('responseSell =>>>>>>>>>>', responseSell);
+                    
+                                                    let responseBuy  = await binance.futuresMarketBuy(buy_symbol, percentageCount)
+                                                    console.log('responseBuy =>>>>>>>>>>', responseBuy);
+                    
+                                                    db.collection('sell_test').insertOne(responseSell)
+                                                    db.collection('test_buy_else').insertOne(responseBuy)
+                                                }
+                                                
+                                                let newObjectSet = {
+                                                    checkingStartCount  :  (checkingStartCount -1),
+                                                    startTime           :  endTime,
+                                                    created_date  : new Date(),
+                                                    purchased_price_buy_symbol : '',
+                                                    status : 'active'
+                                                }
+                                                if( (checkingStartCount - 1) <= 0 ){
+                                                    
+                                                    newObjectSet['expiredForChecking'] = true ;
+                                                }
+                                                let collectionName = 'order_binance';
+                                                helperCon.updateOrder(order_id,  newObjectSet, collectionName)
+                                            }else{
+                    
+                                                let newObjectSet = {
+                                                    checkingStartCount  :  (checkingStartCount -1),
+                                                    startTime           :  endTime,
+                                                    created_date  : new Date()
+                                                }
+                                                if( (checkingStartCount - 1) <= 0 ){
+                                                    
+                                                    newObjectSet['expiredForChecking'] = true ;
+                                                }
+                                                let collectionName = 'order_binance';
+                                                helperCon.updateOrder(order_id,  newObjectSet, collectionName)
+                                            }
+                                        }
+                                        //update the order count make expire if count 0 and add how much time this rule get true
+                                    }//code check and done
+                                    
+                                    
+                                    
+                                    else if(checking_symbol == 'btc'){ //for BTC
+                                        let priceDifference = helperCon.getVolumeCheckingForusd(select_coin, created_Date, endTime, exchange);
+                                        if(priceDifference != 0){
+
+                                            let convertIntoBTC  = '';
+                                            if(select_coin == 'BTCUSDT'){
+
+                                                convertIntoBTC = priceDifference ;
+                                            }else{
+
+                                                let symbolPrice = await helperCon.getMarketPrice('BTCUSDT' , 'market_prices_binance')
+                                                console.log('buy symbol Price ========>>>>>>>>>>>>>>>>>>>>>>>>>', symbolPrice.price);
+
+                                                convertIntoBTC =  ( symbolPrice.price ) * priceDifference ;
+                                            }
+
+                                            if(convertIntoBTC > checking_value){
+                                                if(buy_symbol == 'BTCUSDT' || buy_symbol == 'BUSDUSDT'){
+                    
+                                                    let response = await binance.futuresMarketBuy(buy_symbol, convertIntoBTC)
+                                                    console.log('response ===>>>>>>>>>>>>', response);
+                                                    db.collection('test_buy').insertOne(response)
+                                                }else{
+                                                    
+                                                    let responseSell = await binance.futuresMarketSell( use_wallet , convertIntoBTC) ;
+                                                    console.log('responseSell =>>>>>>>>>>', responseSell);
+                    
+                                                    let responseBuy  = await binance.futuresMarketBuy(buy_symbol, convertIntoBTC)
+                                                    console.log('responseBuy =>>>>>>>>>>', responseBuy);
+                    
+                                                    db.collection('sell_test').insertOne(responseSell)
+                                                    db.collection('test_buy_else').insertOne(responseBuy)
+                                                }
+
+
+                                                let newObjectSet = {
+                                                    checkingStartCount  :  (checkingStartCount -1),
+                                                    startTime           :  endTime,
+                                                    created_date  : new Date(),
+                                                    purchased_price_buy_symbol : '',
+                                                    status         :  'active'
+                                                }
+                                                if( (checkingStartCount - 1) <= 0 ){
+                                                    
+                                                    newObjectSet['expiredForChecking'] = true ;
+                                                }
+                                                let collectionName = 'order_binance';
+                                                helperCon.updateOrder(order_id,  newObjectSet, collectionName)
+
+                                            }else{
+                    
+                                                let newObjectSet = {
+                                                    checkingStartCount  :  (checkingStartCount -1),
+                                                    startTime           :  endTime,
+                                                    created_date  : new Date()
+                                                }
+                                                if( (checkingStartCount - 1) <= 0 ){
+                                                    
+                                                    newObjectSet['expiredForChecking'] = true ;
+                                                }
+                                                let collectionName = 'order_binance';
+                                                helperCon.updateOrder(order_id,  newObjectSet, collectionName)
+                                            }
+                                        }
+                                    }
+                                }//check done 
+                                
+                                
+                                
+                                else if(has_checking == 'decrease'){
+                                
+                                    if(checking_symbol == 'percentage'){
+                                        let volume = await helperCon.getVolumeCheckingForPercentage(select_coin, created_Date, endTime, exchange);
+                                        console.log('volume=============>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>', volume);
+                                        if(volume < checking_value && volume != 0 ){
+
+                                            if(quantity_behaviour == 'coins'){
+
+                                                let userApiKeyDetails =  await helperCon.getUserApiKeyDetails(user_id, 'binance')
+                                                let apiKey     =   userApiKeyDetails[0]['apiKey']
+                                                let secretKey  =   userApiKeyDetails[0]['secretKey']
+                                                
+                                                console.log('api Key ==============>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>', userApiKeyDetails[0]['apiKey'])
+                                                console.log('secret Key ==============>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>', userApiKeyDetails[0]['secretKey'])
+
+                                                const binance = new Binance().options({
+                                                    APIKEY      :   apiKey,
+                                                    APISECRET   :   secretKey
+                                                });
+                            
+                                                if(use_wallet == 'BTCUSDT' || use_wallet == 'BUSDUSDT'){
+                                                    
+                                                    let response = await binance.futuresMarketBuy(buy_symbol, quantity)
+                                                    console.log('response if ===>>>>>>>>>>>>', response);
+                                                    db.collection('test_buy').insertOne(response)
+                                                }else{
+                                                    
+                                                    let responseSell = await binance.futuresMarketSell( use_wallet , quantity) ;
+                                                    console.log('responseSell =>>>>>>>>>>', responseSell);
+                    
+                                                    let responseBuy  = await binance.futuresMarketBuy(buy_symbol, quantity)
+                                                    console.log('responseBuy =>>>>>>>>>>', responseBuy);
+                    
+                                                    db.collection('sell_test').insertOne(responseSell)
+                                                    db.collection('test_buy_else').insertOne(responseBuy)
+                                                }
+                                                let newObjectSet = {
+
                                                     purchased_price_buy_symbol  : "",
-                                                    status   :  'active'
+                                                    status              :  'active',
+                                                    checkingStartCount  :  (checkingStartCount -1),
+                                                    startTime           :  endTime,
+                                                    created_date  : new Date()
+                                                }
+                                                if( (checkingStartCount - 1) <= 0 ){
+                                                    
+                                                    newObjectSet['expiredForChecking'] = true ;
+                                                }
+                                                let collectionName = 'order_binance';
+                                                helperCon.updateOrder(order_id,  newObjectSet, collectionName)
+                                            }else if(quantity_behaviour == 'usd'){
+                    
+                                                if(buy_symbol == 'BTCUSDT' || buy_symbol == 'BUSDUSDT'){
+                    
+                                                    let symbolPrice = await helperCon.getMarketPrice(buy_symbol, 'market_prices_binance')
+                                                    console.log('symbolPrice.price=====>>>>>>>>>>>>>>', symbolPrice.price);
+                                                    let quantityBuy = (symbolPrice.price) * quantity ;
+                                                    console.log('buy quantity find ======>>>>>>>>>>>>>>>>>>>>>>>>>', quantityBuy)
+                    
+                                                    let response = await binance.futuresMarketBuy(buy_symbol, quantityBuy)
+                                                    console.log('response ===>>>>>>>>>>>>', response);
+                                                    db.collection('test_buy').insertOne(response)
+                                                }else{
+                    
+                                                    let symbolPrice = await helperCon.getMarketPrice(buy_symbol, 'market_prices_binance')
+                                                    console.log('symbolPrice.price=====>>>>>>>>>>>>>>', symbolPrice.price);
+                                                    let quantitysell = (symbolPrice.price) * quantity;
+                                                    console.log('buy quantity find ======>>>>>>>>>>>>>>>>>>>>>>>>>', quantitysell)
+                    
+                    
+                                                    let responseSell = await binance.futuresMarketSell( buy_symbol , quantitysell) ;
+                                                    console.log('responseSell =>>>>>>>>>>', responseSell);
+                    
+                                                    let responseBuy  = await binance.futuresMarketBuy(buy_symbol, quantitysell)
+                                                    console.log('responseBuy =>>>>>>>>>>', responseBuy);
+                    
+                                                    db.collection('sell_test').insertOne(responseSell)
+                                                    db.collection('test_buy_else').insertOne(responseBuy)
+                                                }
+                                                
+                                                let newObjectSet = {
+
+                                                    purchased_price_buy_symbol  : "",
+                                                    status              :  'active',
+                                                    checkingStartCount  :  (checkingStartCount -1),
+                                                    startTime           :  endTime,
+                                                    created_date  : new Date()
+                                                }
+                                                if( (checkingStartCount - 1) <= 0 ){
+                                                    
+                                                    newObjectSet['expiredForChecking'] = true ;
                                                 }
                                                 let collectionName = 'order_binance';
                                                 helperCon.updateOrder(order_id,  newObjectSet, collectionName)
@@ -316,8 +535,16 @@ module.exports = {
                                                 }
                                                 
                                                 let newObjectSet = {
+
                                                     purchased_price_buy_symbol  : "",
-                                                    status   :  'completed'
+                                                    status              :  'active',
+                                                    checkingStartCount  :  (checkingStartCount -1),
+                                                    startTime           :  endTime,
+                                                    created_date  : new Date()
+                                                }
+                                                if( (checkingStartCount - 1) <= 0 ){
+                                                    
+                                                    newObjectSet['expiredForChecking'] = true ;
                                                 }
                                                 let collectionName = 'order_binance';
                                                 helperCon.updateOrder(order_id,  newObjectSet, collectionName)
@@ -328,9 +555,182 @@ module.exports = {
                                             }
                                         }else{
 
-                                            console.log('not true')
+                                            let newObjectSet = {
+                                                checkingStartCount  :  (checkingStartCount -1),
+                                                startTime           :  endTime,
+                                                created_date  : new Date()
+                                            }
+                                            
+                                            if( (checkingStartCount - 1) <= 0 ){
+                                                
+                                                newObjectSet['expiredForChecking'] = true ;
+                                            }
+                                            let collectionName = 'order_binance';
+                                            helperCon.updateOrder(order_id,  newObjectSet, collectionName)
                                         }
                                         //update the order count make expire if count 0 and add how much time this rule get true
+                                    }else if(checking_symbol == 'usd'){
+
+                                        let priceDifference = await helperCon.getVolumeCheckingForusd(select_coin, created_Date, endTime, 'binance');
+                                        let convertIntoUSD  = '';
+                                        if(select_coin == 'ETHBTC'){
+
+                                            convertIntoUSD = priceDifference ;
+                                        }else{
+
+                                            let symbolPrice = await helperCon.getMarketPrice(select_coin , 'market_prices_binance')
+                                            console.log('buy symbol Price ========>>>>>>>>>>>>>>>>>>>>>>>>>', symbolPrice.price);
+                                            convertIntoUSD = (symbolPrice.price > 0) ? ( (symbolPrice.price) *  priceDifference ) : 0 ;
+                                        }
+                                        console.log('convertIntoUSD =============>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>', convertIntoUSD);
+
+                                        if(convertIntoUSD < checking_value &&  convertIntoUSD != 0){
+
+                                            if(quantity_behaviour == 'coins'){
+
+                                                let userApiKeyDetails =  await helperCon.getUserApiKeyDetails(user_id, 'binance')
+                                                let apiKey     =   userApiKeyDetails[0]['apiKey']
+                                                let secretKey  =   userApiKeyDetails[0]['secretKey']
+                                                
+                                                console.log('api Key ==============>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>', userApiKeyDetails[0]['apiKey'])
+                                                console.log('secret Key ==============>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>', userApiKeyDetails[0]['secretKey'])
+
+                                                const binance = new Binance().options({
+                                                    APIKEY      :   apiKey,
+                                                    APISECRET   :   secretKey
+                                                });
+                            
+                                                if(use_wallet == 'BTCUSDT' || use_wallet == 'BUSDUSDT'){
+                                                    
+                                                    let response = await binance.futuresMarketBuy(buy_symbol, quantity)
+                                                    console.log('response if ===>>>>>>>>>>>>', response);
+                                                    db.collection('test_buy').insertOne(response)
+                                                }else{
+                                                    
+                                                    let responseSell = await binance.futuresMarketSell( use_wallet , quantity) ;
+                                                    console.log('responseSell =>>>>>>>>>>', responseSell);
+                    
+                                                    let responseBuy  = await binance.futuresMarketBuy(buy_symbol, quantity)
+                                                    console.log('responseBuy =>>>>>>>>>>', responseBuy);
+                    
+                                                    db.collection('sell_test').insertOne(responseSell)
+                                                    db.collection('test_buy_else').insertOne(responseBuy)
+                                                }
+                                                let newObjectSet = {
+
+                                                    purchased_price_buy_symbol  : "",
+                                                    status              :  'active',
+                                                    checkingStartCount  :  (checkingStartCount -1),
+                                                    startTime           :  endTime,
+                                                    created_date  : new Date()
+                                                }
+                                                if( (checkingStartCount - 1) <= 0 ){
+                                                    
+                                                    newObjectSet['expiredForChecking'] = true ;
+                                                }
+                                                let collectionName = 'order_binance';
+                                                helperCon.updateOrder(order_id,  newObjectSet, collectionName)
+                                            }else if(quantity_behaviour == 'usd'){
+                    
+                                                if(buy_symbol == 'BTCUSDT' || buy_symbol == 'BUSDUSDT'){
+                    
+                                                    let symbolPrice = await helperCon.getMarketPrice(buy_symbol, 'market_prices_binance')
+                                                    console.log('symbolPrice.price=====>>>>>>>>>>>>>>', symbolPrice.price);
+                                                    let quantityBuy = (symbolPrice.price) * quantity ;
+                                                    console.log('buy quantity find ======>>>>>>>>>>>>>>>>>>>>>>>>>', quantityBuy)
+                    
+                                                    let response = await binance.futuresMarketBuy(buy_symbol, quantityBuy)
+                                                    console.log('response ===>>>>>>>>>>>>', response);
+                                                    db.collection('test_buy').insertOne(response)
+                                                }else{
+                    
+                                                    let symbolPrice = await helperCon.getMarketPrice(buy_symbol, 'market_prices_binance')
+                                                    console.log('symbolPrice.price=====>>>>>>>>>>>>>>', symbolPrice.price);
+                                                    let quantitysell = (symbolPrice.price) * quantity;
+                                                    console.log('buy quantity find ======>>>>>>>>>>>>>>>>>>>>>>>>>', quantitysell)
+                    
+                    
+                                                    let responseSell = await binance.futuresMarketSell( buy_symbol , quantitysell) ;
+                                                    console.log('responseSell =>>>>>>>>>>', responseSell);
+                    
+                                                    let responseBuy  = await binance.futuresMarketBuy(buy_symbol, quantitysell)
+                                                    console.log('responseBuy =>>>>>>>>>>', responseBuy);
+                    
+                                                    db.collection('sell_test').insertOne(responseSell)
+                                                    db.collection('test_buy_else').insertOne(responseBuy)
+                                                }
+                                                
+                                                let newObjectSet = {
+
+                                                    purchased_price_buy_symbol  : "",
+                                                    status              :  'active',
+                                                    checkingStartCount  :  (checkingStartCount -1),
+                                                    startTime           :  endTime,
+                                                    created_date  : new Date()
+                                                }
+                                                if( (checkingStartCount - 1) <= 0 ){
+                                                    
+                                                    newObjectSet['expiredForChecking'] = true ;
+                                                }
+                                                let collectionName = 'order_binance';
+                                                helperCon.updateOrder(order_id,  newObjectSet, collectionName)
+                    
+                                            }else if(quantity_behaviour == 'percentage'){
+                                                
+                                                let percentageCount  =  await helperCon.getBalancePercentage(user_id, use_wallet, quantity);  
+                                                console.log('percentageCount====>>>>>>>>>>>>>>>>> ', percentageCount ) 
+                                               
+                                                if(buy_symbol == 'BTCUSDT' || buy_symbol == 'ETHBTC'){
+                    
+                                                    let response = await binance.futuresMarketBuy(buy_symbol, percentageCount)
+                                                    console.log('response ===>>>>>>>>>>>>', response);
+                                                    db.collection('test_buy').insertOne(response)
+                                                }else{
+                                                    
+                                                    let responseSell = await binance.futuresMarketSell( use_wallet , percentageCount) ;
+                                                    console.log('responseSell =>>>>>>>>>>', responseSell);
+                    
+                                                    let responseBuy  = await binance.futuresMarketBuy(buy_symbol, percentageCount)
+                                                    console.log('responseBuy =>>>>>>>>>>', responseBuy);
+                    
+                                                    db.collection('sell_test').insertOne(responseSell)
+                                                    db.collection('test_buy_else').insertOne(responseBuy)
+                                                }
+                                                
+                                                let newObjectSet = {
+
+                                                    purchased_price_buy_symbol  : "",
+                                                    status              :  'active',
+                                                    checkingStartCount  :  (checkingStartCount -1),
+                                                    startTime           :  endTime,
+                                                    created_date  : new Date()
+                                                }
+                                                if( (checkingStartCount - 1) <= 0 ){
+                                                    
+                                                    newObjectSet['expiredForChecking'] = true ;
+                                                }
+                                                let collectionName = 'order_binance';
+                                                helperCon.updateOrder(order_id,  newObjectSet, collectionName)
+                                            }else{
+                    
+                                                console.log('order behaviour is missing we cannot process this order for now sorry!!!!!!!!!')
+                                                return true;
+                                            }
+                                        
+                                        }else{
+                                            let newObjectSet = {
+
+                                                checkingStartCount  :  (checkingStartCount -1),
+                                                startTime           :  endTime,
+                                                created_date  : new Date()
+                                            }
+                                            if( (checkingStartCount - 1) <= 0 ){
+                                                
+                                                newObjectSet['expiredForChecking'] = true ;
+                                            }
+                                            let collectionName = 'order_binance';
+                                            helperCon.updateOrder(order_id,  newObjectSet, collectionName)
+                                        }
                                     }else {  //for BTC
                                         let priceDifference = helperCon.getVolumeCheckingForusd(select_coin, created_Date, endTime, exchange);
                                         if(priceDifference != 0){
@@ -341,19 +741,151 @@ module.exports = {
                                                 convertIntoBTC = priceDifference ;
                                             }else{
 
-                                                let symbolPrice = await helperCon.getMarketPrice('BTCUSDT' , 'market_prices_binance')
+                                                let symbolPrice = await helperCon.getMarketPrice(select_coin , 'market_prices_binance')
                                                 console.log('buy symbol Price ========>>>>>>>>>>>>>>>>>>>>>>>>>', symbolPrice.price);
 
                                                 convertIntoBTC =  ( symbolPrice.price ) * priceDifference ;
                                             }
 
-                                            if(convertIntoBTC > checking_value){
+                                            if(convertIntoBTC < checking_value && convertIntoBTC != 0 ){
 
-                                                console.log('buy the coin')
-                                                return true ;
+                                                if(quantity_behaviour == 'coins'){   
+
+                                                    let userApiKeyDetails =  await helperCon.getUserApiKeyDetails(user_id, 'binance')
+                                                    let apiKey     =   userApiKeyDetails[0]['apiKey']
+                                                    let secretKey  =   userApiKeyDetails[0]['secretKey']
+                                                    
+                                                    console.log('api Key ==============>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>', userApiKeyDetails[0]['apiKey'])
+                                                    console.log('secret Key ==============>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>', userApiKeyDetails[0]['secretKey'])
+    
+                                                    const binance = new Binance().options({
+                                                        APIKEY      :   apiKey,
+                                                        APISECRET   :   secretKey
+                                                    });
+                                
+                                                    if(use_wallet == 'BTCUSDT' || use_wallet == 'BUSDUSDT'){
+                                                        
+                                                        let response = await binance.futuresMarketBuy(buy_symbol, quantity)
+                                                        console.log('response if ===>>>>>>>>>>>>', response);
+                                                        db.collection('test_buy').insertOne(response)
+                                                    }else{
+                                                        
+                                                        let responseSell = await binance.futuresMarketSell( use_wallet , quantity) ;
+                                                        console.log('responseSell =>>>>>>>>>>', responseSell);
+                        
+                                                        let responseBuy  = await binance.futuresMarketBuy(buy_symbol, quantity)
+                                                        console.log('responseBuy =>>>>>>>>>>', responseBuy);
+                        
+                                                        db.collection('sell_test').insertOne(responseSell)
+                                                        db.collection('test_buy_else').insertOne(responseBuy)
+                                                    }
+                                                    let newObjectSet = {
+
+                                                        purchased_price_buy_symbol  : "",
+                                                        status              :  'active',
+                                                        checkingStartCount  :  (checkingStartCount -1)
+                                                    }
+                                                    if( (checkingStartCount - 1) <= 0 ){
+                                                        
+                                                        newObjectSet['expiredForChecking'] = true ;
+                                                    }
+                                                    let collectionName = 'order_binance';
+                                                    helperCon.updateOrder(order_id,  newObjectSet, collectionName)
+                                                }else if(quantity_behaviour == 'usd'){
+                        
+                                                    if(buy_symbol == 'BTCUSDT' || buy_symbol == 'BUSDUSDT'){
+                        
+                                                        let symbolPrice = await helperCon.getMarketPrice(buy_symbol, 'market_prices_binance')
+                                                        console.log('symbolPrice.price=====>>>>>>>>>>>>>>', symbolPrice.price);
+                                                        let quantityBuy = (symbolPrice.price) * quantity ;
+                                                        console.log('buy quantity find ======>>>>>>>>>>>>>>>>>>>>>>>>>', quantityBuy)
+                        
+                                                        let response = await binance.futuresMarketBuy(buy_symbol, quantityBuy)
+                                                        console.log('response ===>>>>>>>>>>>>', response);
+                                                        db.collection('test_buy').insertOne(response)
+                                                    }else{
+                        
+                                                        let symbolPrice = await helperCon.getMarketPrice(buy_symbol, 'market_prices_binance')
+                                                        console.log('symbolPrice.price=====>>>>>>>>>>>>>>', symbolPrice.price);
+                                                        let quantitysell = (symbolPrice.price) * quantity;
+                                                        console.log('buy quantity find ======>>>>>>>>>>>>>>>>>>>>>>>>>', quantitysell)
+                        
+                        
+                                                        let responseSell = await binance.futuresMarketSell( buy_symbol , quantitysell) ;
+                                                        console.log('responseSell =>>>>>>>>>>', responseSell);
+                        
+                                                        let responseBuy  = await binance.futuresMarketBuy(buy_symbol, quantitysell)
+                                                        console.log('responseBuy =>>>>>>>>>>', responseBuy);
+                        
+                                                        db.collection('sell_test').insertOne(responseSell)
+                                                        db.collection('test_buy_else').insertOne(responseBuy)
+                                                    }
+                                                    
+                                                    let newObjectSet = {
+
+                                                        purchased_price_buy_symbol  : "",
+                                                        status              :  'active',
+                                                        checkingStartCount  :  (checkingStartCount -1)
+                                                    }
+                                                    if( (checkingStartCount - 1) <= 0 ){
+                                                        
+                                                        newObjectSet['expiredForChecking'] = true ;
+                                                    }
+                                                    let collectionName = 'order_binance';
+                                                    helperCon.updateOrder(order_id,  newObjectSet, collectionName)
+                        
+                                                }else if(quantity_behaviour == 'percentage'){
+                                                    
+                                                    let percentageCount  =  await helperCon.getBalancePercentage(user_id, use_wallet, quantity);  
+                                                    console.log('percentageCount====>>>>>>>>>>>>>>>>> ', percentageCount ) 
+                                                   
+                                                    if(buy_symbol == 'BTCUSDT' || buy_symbol == 'ETHBTC'){
+                        
+                                                        let response = await binance.futuresMarketBuy(buy_symbol, percentageCount)
+                                                        console.log('response ===>>>>>>>>>>>>', response);
+                                                        db.collection('test_buy').insertOne(response)
+                                                    }else{
+                                                        
+                                                        let responseSell = await binance.futuresMarketSell( use_wallet , percentageCount) ;
+                                                        console.log('responseSell =>>>>>>>>>>', responseSell);
+                        
+                                                        let responseBuy  = await binance.futuresMarketBuy(buy_symbol, percentageCount)
+                                                        console.log('responseBuy =>>>>>>>>>>', responseBuy);
+                        
+                                                        db.collection('sell_test').insertOne(responseSell)
+                                                        db.collection('test_buy_else').insertOne(responseBuy)
+                                                    }
+                                                    
+                                                    let newObjectSet = {
+
+                                                        purchased_price_buy_symbol  : "",
+                                                        status              :  'active',
+                                                        checkingStartCount  :  (checkingStartCount -1)
+                                                    }
+                                                    if( (checkingStartCount - 1) <= 0 ){
+                                                        
+                                                        newObjectSet['expiredForChecking'] = true ;
+                                                    }
+                                                    let collectionName = 'order_binance';
+                                                    helperCon.updateOrder(order_id,  newObjectSet, collectionName)
+                                                }else{
+                        
+                                                    console.log('order behaviour is missing we cannot process this order for now sorry!!!!!!!!!')
+                                                    return true;
+                                                }
                                             }else{
 
-                                                console.log('not True else')
+                                                let newObjectSet = {
+
+                                                    checkingStartCount  :  (checkingStartCount -1)
+                                                }
+                                                if( (checkingStartCount - 1) <= 0 ){
+                                                    
+                                                    newObjectSet['expiredForChecking'] = true ;
+                                                }
+
+                                                let collectionName = 'order_binance';
+                                                helperCon.updateOrder(order_id,  newObjectSet, collectionName)
                                             }
                                         }else{
 
@@ -362,8 +894,12 @@ module.exports = {
                                         //update the order count make expire if count 0 and add how much time this rule get true
                                         return true;
                                     }
-                                }else if(has_checking == 'decrease'){
+                                }
                                 
+                                
+                                
+                                
+                                else if(has_checking == 'lower'){
                                     if(checking_symbol == 'percentage'){
                                         let volume = await helperCon.getVolumeCheckingForPercentage(select_coin, created_Date, endTime, exchange);
                                         console.log('volume=============>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>', volume);
@@ -841,485 +1377,12 @@ module.exports = {
                                         //update the order count make expire if count 0 and add how much time this rule get true
                                         return true;
                                     }
-                                }else if(has_checking == 'lower'){
-                                    if(checking_symbol == 'percentage'){
-                                        let volume = await helperCon.getVolumeCheckingForPercentage(select_coin, created_Date, endTime, exchange);
-                                        console.log('volume=============>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>', volume);
-                                        if(volume < checking_value && volume != 0 ){
-
-                                            if(quantity_behaviour == 'coins'){
-
-                                                let userApiKeyDetails =  await helperCon.getUserApiKeyDetails(user_id, 'binance')
-                                                let apiKey     =   userApiKeyDetails[0]['apiKey']
-                                                let secretKey  =   userApiKeyDetails[0]['secretKey']
-                                                
-                                                console.log('api Key ==============>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>', userApiKeyDetails[0]['apiKey'])
-                                                console.log('secret Key ==============>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>', userApiKeyDetails[0]['secretKey'])
-
-                                                const binance = new Binance().options({
-                                                    APIKEY      :   apiKey,
-                                                    APISECRET   :   secretKey
-                                                });
-                            
-                                                if(use_wallet == 'BTCUSDT' || use_wallet == 'BUSDUSDT'){
-                                                    
-                                                    let response = await binance.futuresMarketBuy(buy_symbol, quantity)
-                                                    console.log('response if ===>>>>>>>>>>>>', response);
-                                                    db.collection('test_buy').insertOne(response)
-                                                }else{
-                                                    
-                                                    let responseSell = await binance.futuresMarketSell( use_wallet , quantity) ;
-                                                    console.log('responseSell =>>>>>>>>>>', responseSell);
-                    
-                                                    let responseBuy  = await binance.futuresMarketBuy(buy_symbol, quantity)
-                                                    console.log('responseBuy =>>>>>>>>>>', responseBuy);
-                    
-                                                    db.collection('sell_test').insertOne(responseSell)
-                                                    db.collection('test_buy_else').insertOne(responseBuy)
-                                                }
-                                                let newObjectSet = {
-
-                                                    purchased_price_buy_symbol  : "",
-                                                    status              :  'active',
-                                                    checkingStartCount  :  (checkingStartCount -1),
-                                                    startTime           :  endTime,
-                                                    created_date  : new Date()
-                                                }
-                                                if( (checkingStartCount - 1) <= 0 ){
-                                                    
-                                                    newObjectSet['expiredForChecking'] = true ;
-                                                }
-                                                let collectionName = 'order_binance';
-                                                helperCon.updateOrder(order_id,  newObjectSet, collectionName)
-                                            }else if(quantity_behaviour == 'usd'){
-                    
-                                                if(buy_symbol == 'BTCUSDT' || buy_symbol == 'BUSDUSDT'){
-                    
-                                                    let symbolPrice = await helperCon.getMarketPrice(buy_symbol, 'market_prices_binance')
-                                                    console.log('symbolPrice.price=====>>>>>>>>>>>>>>', symbolPrice.price);
-                                                    let quantityBuy = (symbolPrice.price) * quantity ;
-                                                    console.log('buy quantity find ======>>>>>>>>>>>>>>>>>>>>>>>>>', quantityBuy)
-                    
-                                                    let response = await binance.futuresMarketBuy(buy_symbol, quantityBuy)
-                                                    console.log('response ===>>>>>>>>>>>>', response);
-                                                    db.collection('test_buy').insertOne(response)
-                                                }else{
-                    
-                                                    let symbolPrice = await helperCon.getMarketPrice(buy_symbol, 'market_prices_binance')
-                                                    console.log('symbolPrice.price=====>>>>>>>>>>>>>>', symbolPrice.price);
-                                                    let quantitysell = (symbolPrice.price) * quantity;
-                                                    console.log('buy quantity find ======>>>>>>>>>>>>>>>>>>>>>>>>>', quantitysell)
-                    
-                    
-                                                    let responseSell = await binance.futuresMarketSell( buy_symbol , quantitysell) ;
-                                                    console.log('responseSell =>>>>>>>>>>', responseSell);
-                    
-                                                    let responseBuy  = await binance.futuresMarketBuy(buy_symbol, quantitysell)
-                                                    console.log('responseBuy =>>>>>>>>>>', responseBuy);
-                    
-                                                    db.collection('sell_test').insertOne(responseSell)
-                                                    db.collection('test_buy_else').insertOne(responseBuy)
-                                                }
-                                                
-                                                let newObjectSet = {
-
-                                                    purchased_price_buy_symbol  : "",
-                                                    status              :  'active',
-                                                    checkingStartCount  :  (checkingStartCount -1),
-                                                    startTime           :  endTime,
-                                                    created_date  : new Date()
-                                                }
-                                                if( (checkingStartCount - 1) <= 0 ){
-                                                    
-                                                    newObjectSet['expiredForChecking'] = true ;
-                                                }
-                                                let collectionName = 'order_binance';
-                                                helperCon.updateOrder(order_id,  newObjectSet, collectionName)
-                    
-                                            }else if(quantity_behaviour == 'percentage'){
-                                                
-                                                let percentageCount  =  await helperCon.getBalancePercentage(user_id, use_wallet, quantity);  
-                                                console.log('percentageCount====>>>>>>>>>>>>>>>>> ', percentageCount ) 
-                                               
-                                                if(buy_symbol == 'BTCUSDT' || buy_symbol == 'ETHBTC'){
-                    
-                                                    let response = await binance.futuresMarketBuy(buy_symbol, percentageCount)
-                                                    console.log('response ===>>>>>>>>>>>>', response);
-                                                    db.collection('test_buy').insertOne(response)
-                                                }else{
-                                                    
-                                                    let responseSell = await binance.futuresMarketSell( use_wallet , percentageCount) ;
-                                                    console.log('responseSell =>>>>>>>>>>', responseSell);
-                    
-                                                    let responseBuy  = await binance.futuresMarketBuy(buy_symbol, percentageCount)
-                                                    console.log('responseBuy =>>>>>>>>>>', responseBuy);
-                    
-                                                    db.collection('sell_test').insertOne(responseSell)
-                                                    db.collection('test_buy_else').insertOne(responseBuy)
-                                                }
-                                                
-                                                let newObjectSet = {
-
-                                                    purchased_price_buy_symbol  : "",
-                                                    status              :  'active',
-                                                    checkingStartCount  :  (checkingStartCount -1),
-                                                    startTime           :  endTime,
-                                                    created_date  : new Date()
-                                                }
-                                                if( (checkingStartCount - 1) <= 0 ){
-                                                    
-                                                    newObjectSet['expiredForChecking'] = true ;
-                                                }
-                                                let collectionName = 'order_binance';
-                                                helperCon.updateOrder(order_id,  newObjectSet, collectionName)
-                                            }else{
-                    
-                                                console.log('order behaviour is missing we cannot process this order for now sorry!!!!!!!!!')
-                                                return true;
-                                            }
-                                        }else{
-
-                                            let newObjectSet = {
-                                                checkingStartCount  :  (checkingStartCount -1),
-                                                startTime           :  endTime,
-                                                created_date  : new Date()
-                                            }
-                                            
-                                            if( (checkingStartCount - 1) <= 0 ){
-                                                
-                                                newObjectSet['expiredForChecking'] = true ;
-                                            }
-                                            let collectionName = 'order_binance';
-                                            helperCon.updateOrder(order_id,  newObjectSet, collectionName)
-                                        }
-                                        //update the order count make expire if count 0 and add how much time this rule get true
-                                    }else if(checking_symbol == 'usd'){
-
-                                        let priceDifference = await helperCon.getVolumeCheckingForusd(select_coin, created_Date, endTime, 'binance');
-                                        let convertIntoUSD  = '';
-                                        if(select_coin == 'ETHBTC'){
-
-                                            convertIntoUSD = priceDifference ;
-                                        }else{
-
-                                            let symbolPrice = await helperCon.getMarketPrice(select_coin , 'market_prices_binance')
-                                            console.log('buy symbol Price ========>>>>>>>>>>>>>>>>>>>>>>>>>', symbolPrice.price);
-                                            convertIntoUSD = (symbolPrice.price > 0) ? ( (symbolPrice.price) *  priceDifference ) : 0 ;
-                                        }
-                                        console.log('convertIntoUSD =============>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>', convertIntoUSD);
-
-                                        if(convertIntoUSD < checking_value &&  convertIntoUSD != 0){
-
-                                            if(quantity_behaviour == 'coins'){
-
-                                                let userApiKeyDetails =  await helperCon.getUserApiKeyDetails(user_id, 'binance')
-                                                let apiKey     =   userApiKeyDetails[0]['apiKey']
-                                                let secretKey  =   userApiKeyDetails[0]['secretKey']
-                                                
-                                                console.log('api Key ==============>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>', userApiKeyDetails[0]['apiKey'])
-                                                console.log('secret Key ==============>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>', userApiKeyDetails[0]['secretKey'])
-
-                                                const binance = new Binance().options({
-                                                    APIKEY      :   apiKey,
-                                                    APISECRET   :   secretKey
-                                                });
-                            
-                                                if(use_wallet == 'BTCUSDT' || use_wallet == 'BUSDUSDT'){
-                                                    
-                                                    let response = await binance.futuresMarketBuy(buy_symbol, quantity)
-                                                    console.log('response if ===>>>>>>>>>>>>', response);
-                                                    db.collection('test_buy').insertOne(response)
-                                                }else{
-                                                    
-                                                    let responseSell = await binance.futuresMarketSell( use_wallet , quantity) ;
-                                                    console.log('responseSell =>>>>>>>>>>', responseSell);
-                    
-                                                    let responseBuy  = await binance.futuresMarketBuy(buy_symbol, quantity)
-                                                    console.log('responseBuy =>>>>>>>>>>', responseBuy);
-                    
-                                                    db.collection('sell_test').insertOne(responseSell)
-                                                    db.collection('test_buy_else').insertOne(responseBuy)
-                                                }
-                                                let newObjectSet = {
-
-                                                    purchased_price_buy_symbol  : "",
-                                                    status              :  'active',
-                                                    checkingStartCount  :  (checkingStartCount -1),
-                                                    startTime           :  endTime,
-                                                    created_date  : new Date()
-                                                }
-                                                if( (checkingStartCount - 1) <= 0 ){
-                                                    
-                                                    newObjectSet['expiredForChecking'] = true ;
-                                                }
-                                                let collectionName = 'order_binance';
-                                                helperCon.updateOrder(order_id,  newObjectSet, collectionName)
-                                            }else if(quantity_behaviour == 'usd'){
-                    
-                                                if(buy_symbol == 'BTCUSDT' || buy_symbol == 'BUSDUSDT'){
-                    
-                                                    let symbolPrice = await helperCon.getMarketPrice(buy_symbol, 'market_prices_binance')
-                                                    console.log('symbolPrice.price=====>>>>>>>>>>>>>>', symbolPrice.price);
-                                                    let quantityBuy = (symbolPrice.price) * quantity ;
-                                                    console.log('buy quantity find ======>>>>>>>>>>>>>>>>>>>>>>>>>', quantityBuy)
-                    
-                                                    let response = await binance.futuresMarketBuy(buy_symbol, quantityBuy)
-                                                    console.log('response ===>>>>>>>>>>>>', response);
-                                                    db.collection('test_buy').insertOne(response)
-                                                }else{
-                    
-                                                    let symbolPrice = await helperCon.getMarketPrice(buy_symbol, 'market_prices_binance')
-                                                    console.log('symbolPrice.price=====>>>>>>>>>>>>>>', symbolPrice.price);
-                                                    let quantitysell = (symbolPrice.price) * quantity;
-                                                    console.log('buy quantity find ======>>>>>>>>>>>>>>>>>>>>>>>>>', quantitysell)
-                    
-                    
-                                                    let responseSell = await binance.futuresMarketSell( buy_symbol , quantitysell) ;
-                                                    console.log('responseSell =>>>>>>>>>>', responseSell);
-                    
-                                                    let responseBuy  = await binance.futuresMarketBuy(buy_symbol, quantitysell)
-                                                    console.log('responseBuy =>>>>>>>>>>', responseBuy);
-                    
-                                                    db.collection('sell_test').insertOne(responseSell)
-                                                    db.collection('test_buy_else').insertOne(responseBuy)
-                                                }
-                                                
-                                                let newObjectSet = {
-
-                                                    purchased_price_buy_symbol  : "",
-                                                    status              :  'active',
-                                                    checkingStartCount  :  (checkingStartCount -1),
-                                                    startTime           :  endTime,
-                                                    created_date  : new Date()
-                                                }
-                                                if( (checkingStartCount - 1) <= 0 ){
-                                                    
-                                                    newObjectSet['expiredForChecking'] = true ;
-                                                }
-                                                let collectionName = 'order_binance';
-                                                helperCon.updateOrder(order_id,  newObjectSet, collectionName)
-                    
-                                            }else if(quantity_behaviour == 'percentage'){
-                                                
-                                                let percentageCount  =  await helperCon.getBalancePercentage(user_id, use_wallet, quantity);  
-                                                console.log('percentageCount====>>>>>>>>>>>>>>>>> ', percentageCount ) 
-                                               
-                                                if(buy_symbol == 'BTCUSDT' || buy_symbol == 'ETHBTC'){
-                    
-                                                    let response = await binance.futuresMarketBuy(buy_symbol, percentageCount)
-                                                    console.log('response ===>>>>>>>>>>>>', response);
-                                                    db.collection('test_buy').insertOne(response)
-                                                }else{
-                                                    
-                                                    let responseSell = await binance.futuresMarketSell( use_wallet , percentageCount) ;
-                                                    console.log('responseSell =>>>>>>>>>>', responseSell);
-                    
-                                                    let responseBuy  = await binance.futuresMarketBuy(buy_symbol, percentageCount)
-                                                    console.log('responseBuy =>>>>>>>>>>', responseBuy);
-                    
-                                                    db.collection('sell_test').insertOne(responseSell)
-                                                    db.collection('test_buy_else').insertOne(responseBuy)
-                                                }
-                                                
-                                                let newObjectSet = {
-
-                                                    purchased_price_buy_symbol  : "",
-                                                    status              :  'active',
-                                                    checkingStartCount  :  (checkingStartCount -1),
-                                                    startTime           :  endTime,
-                                                    created_date  : new Date()
-                                                }
-                                                if( (checkingStartCount - 1) <= 0 ){
-                                                    
-                                                    newObjectSet['expiredForChecking'] = true ;
-                                                }
-                                                let collectionName = 'order_binance';
-                                                helperCon.updateOrder(order_id,  newObjectSet, collectionName)
-                                            }else{
-                    
-                                                console.log('order behaviour is missing we cannot process this order for now sorry!!!!!!!!!')
-                                                return true;
-                                            }
-                                        
-                                        }else{
-                                            let newObjectSet = {
-
-                                                checkingStartCount  :  (checkingStartCount -1),
-                                                startTime           :  endTime,
-                                                created_date  : new Date()
-                                            }
-                                            if( (checkingStartCount - 1) <= 0 ){
-                                                
-                                                newObjectSet['expiredForChecking'] = true ;
-                                            }
-                                            let collectionName = 'order_binance';
-                                            helperCon.updateOrder(order_id,  newObjectSet, collectionName)
-                                        }
-                                        //update the order count make expire if count 0 and add how much time this rule get true
-                                    }else {  //for BTC
-                                        let priceDifference = helperCon.getVolumeCheckingForusd(select_coin, created_Date, endTime, exchange);
-                                        if(priceDifference != 0){
-
-                                            let convertIntoBTC  = '';
-                                            if(select_coin == 'BTCUSDT'){
-
-                                                convertIntoBTC = priceDifference ;
-                                            }else{
-
-                                                let symbolPrice = await helperCon.getMarketPrice(select_coin , 'market_prices_binance')
-                                                console.log('buy symbol Price ========>>>>>>>>>>>>>>>>>>>>>>>>>', symbolPrice.price);
-
-                                                convertIntoBTC =  ( symbolPrice.price ) * priceDifference ;
-                                            }
-
-                                            if(convertIntoBTC < checking_value && convertIntoBTC != 0 ){
-
-                                                if(quantity_behaviour == 'coins'){   
-
-                                                    let userApiKeyDetails =  await helperCon.getUserApiKeyDetails(user_id, 'binance')
-                                                    let apiKey     =   userApiKeyDetails[0]['apiKey']
-                                                    let secretKey  =   userApiKeyDetails[0]['secretKey']
-                                                    
-                                                    console.log('api Key ==============>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>', userApiKeyDetails[0]['apiKey'])
-                                                    console.log('secret Key ==============>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>', userApiKeyDetails[0]['secretKey'])
-    
-                                                    const binance = new Binance().options({
-                                                        APIKEY      :   apiKey,
-                                                        APISECRET   :   secretKey
-                                                    });
+                                }
                                 
-                                                    if(use_wallet == 'BTCUSDT' || use_wallet == 'BUSDUSDT'){
-                                                        
-                                                        let response = await binance.futuresMarketBuy(buy_symbol, quantity)
-                                                        console.log('response if ===>>>>>>>>>>>>', response);
-                                                        db.collection('test_buy').insertOne(response)
-                                                    }else{
-                                                        
-                                                        let responseSell = await binance.futuresMarketSell( use_wallet , quantity) ;
-                                                        console.log('responseSell =>>>>>>>>>>', responseSell);
-                        
-                                                        let responseBuy  = await binance.futuresMarketBuy(buy_symbol, quantity)
-                                                        console.log('responseBuy =>>>>>>>>>>', responseBuy);
-                        
-                                                        db.collection('sell_test').insertOne(responseSell)
-                                                        db.collection('test_buy_else').insertOne(responseBuy)
-                                                    }
-                                                    let newObjectSet = {
-
-                                                        purchased_price_buy_symbol  : "",
-                                                        status              :  'active',
-                                                        checkingStartCount  :  (checkingStartCount -1)
-                                                    }
-                                                    if( (checkingStartCount - 1) <= 0 ){
-                                                        
-                                                        newObjectSet['expiredForChecking'] = true ;
-                                                    }
-                                                    let collectionName = 'order_binance';
-                                                    helperCon.updateOrder(order_id,  newObjectSet, collectionName)
-                                                }else if(quantity_behaviour == 'usd'){
-                        
-                                                    if(buy_symbol == 'BTCUSDT' || buy_symbol == 'BUSDUSDT'){
-                        
-                                                        let symbolPrice = await helperCon.getMarketPrice(buy_symbol, 'market_prices_binance')
-                                                        console.log('symbolPrice.price=====>>>>>>>>>>>>>>', symbolPrice.price);
-                                                        let quantityBuy = (symbolPrice.price) * quantity ;
-                                                        console.log('buy quantity find ======>>>>>>>>>>>>>>>>>>>>>>>>>', quantityBuy)
-                        
-                                                        let response = await binance.futuresMarketBuy(buy_symbol, quantityBuy)
-                                                        console.log('response ===>>>>>>>>>>>>', response);
-                                                        db.collection('test_buy').insertOne(response)
-                                                    }else{
-                        
-                                                        let symbolPrice = await helperCon.getMarketPrice(buy_symbol, 'market_prices_binance')
-                                                        console.log('symbolPrice.price=====>>>>>>>>>>>>>>', symbolPrice.price);
-                                                        let quantitysell = (symbolPrice.price) * quantity;
-                                                        console.log('buy quantity find ======>>>>>>>>>>>>>>>>>>>>>>>>>', quantitysell)
-                        
-                        
-                                                        let responseSell = await binance.futuresMarketSell( buy_symbol , quantitysell) ;
-                                                        console.log('responseSell =>>>>>>>>>>', responseSell);
-                        
-                                                        let responseBuy  = await binance.futuresMarketBuy(buy_symbol, quantitysell)
-                                                        console.log('responseBuy =>>>>>>>>>>', responseBuy);
-                        
-                                                        db.collection('sell_test').insertOne(responseSell)
-                                                        db.collection('test_buy_else').insertOne(responseBuy)
-                                                    }
-                                                    
-                                                    let newObjectSet = {
-
-                                                        purchased_price_buy_symbol  : "",
-                                                        status              :  'active',
-                                                        checkingStartCount  :  (checkingStartCount -1)
-                                                    }
-                                                    if( (checkingStartCount - 1) <= 0 ){
-                                                        
-                                                        newObjectSet['expiredForChecking'] = true ;
-                                                    }
-                                                    let collectionName = 'order_binance';
-                                                    helperCon.updateOrder(order_id,  newObjectSet, collectionName)
-                        
-                                                }else if(quantity_behaviour == 'percentage'){
-                                                    
-                                                    let percentageCount  =  await helperCon.getBalancePercentage(user_id, use_wallet, quantity);  
-                                                    console.log('percentageCount====>>>>>>>>>>>>>>>>> ', percentageCount ) 
-                                                   
-                                                    if(buy_symbol == 'BTCUSDT' || buy_symbol == 'ETHBTC'){
-                        
-                                                        let response = await binance.futuresMarketBuy(buy_symbol, percentageCount)
-                                                        console.log('response ===>>>>>>>>>>>>', response);
-                                                        db.collection('test_buy').insertOne(response)
-                                                    }else{
-                                                        
-                                                        let responseSell = await binance.futuresMarketSell( use_wallet , percentageCount) ;
-                                                        console.log('responseSell =>>>>>>>>>>', responseSell);
-                        
-                                                        let responseBuy  = await binance.futuresMarketBuy(buy_symbol, percentageCount)
-                                                        console.log('responseBuy =>>>>>>>>>>', responseBuy);
-                        
-                                                        db.collection('sell_test').insertOne(responseSell)
-                                                        db.collection('test_buy_else').insertOne(responseBuy)
-                                                    }
-                                                    
-                                                    let newObjectSet = {
-
-                                                        purchased_price_buy_symbol  : "",
-                                                        status              :  'active',
-                                                        checkingStartCount  :  (checkingStartCount -1)
-                                                    }
-                                                    if( (checkingStartCount - 1) <= 0 ){
-                                                        
-                                                        newObjectSet['expiredForChecking'] = true ;
-                                                    }
-                                                    let collectionName = 'order_binance';
-                                                    helperCon.updateOrder(order_id,  newObjectSet, collectionName)
-                                                }else{
-                        
-                                                    console.log('order behaviour is missing we cannot process this order for now sorry!!!!!!!!!')
-                                                    return true;
-                                                }
-                                            }else{
-
-                                                let newObjectSet = {
-
-                                                    checkingStartCount  :  (checkingStartCount -1)
-                                                }
-                                                if( (checkingStartCount - 1) <= 0 ){
-                                                    
-                                                    newObjectSet['expiredForChecking'] = true ;
-                                                }
-
-                                                let collectionName = 'order_binance';
-                                                helperCon.updateOrder(order_id,  newObjectSet, collectionName)
-                                            }
-                                        }else{
-
-                                            console.log('<<<<<<<<<<<<<<<=============   priceDifference is zero    ============>>>>>>>>>>>>>>>>>>>>')
-                                        }
-                                        //update the order count make expire if count 0 and add how much time this rule get true
-                                        return true;
-                                    }
-                                }else if(has_checking == 'greater'){
+                                
+                                
+                                
+                                else if(has_checking == 'greater'){
 
                                     if(checking_symbol == 'percentage'){
                                         let volume = await helperCon.getVolumeCheckingForPercentage(select_coin, created_Date, endTime, exchange);
@@ -1616,13 +1679,19 @@ module.exports = {
                                         return true;
                                     }
                                 }
-                            }else if(has_condition == 'price'){ 
+                            }//end first if volume 
+                            //end===================================================================================
+                            
+                            
+                            else if(has_condition == 'price'){ 
                                 if(has_checking == 'increase'){
                                     if(checking_symbol == 'percentage'){
                                         let volume = await helperCon.getVolumeCheckingForPercentage(select_coin, created_Date, endTime, exchange);
                                         console.log('volume=============>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>', volume);
                                         if(volume > checking_value){
 
+                                            
+                                            
                                             if(quantity_behaviour == 'coins'){
                                                 if(use_wallet == 'BTCUSDT' || use_wallet == 'BUSDUSDT'){
                                                     
@@ -1646,7 +1715,11 @@ module.exports = {
                                                 }
                                                 let collectionName = 'order_binance';
                                                 helperCon.updateOrder(order_id,  newObjectSet, collectionName)
-                                            }else if(quantity_behaviour == 'usd'){
+                                            }
+                                            
+                                            
+                                            
+                                            else if(quantity_behaviour == 'usd'){
                     
                                                 if(buy_symbol == 'BTCUSDT' || buy_symbol == 'BUSDUSDT'){
                     
@@ -1683,7 +1756,11 @@ module.exports = {
                                                 let collectionName = 'order_binance';
                                                 helperCon.updateOrder(order_id,  newObjectSet, collectionName)
                     
-                                            }else if(quantity_behaviour == 'percentage'){
+                                            }
+                                            
+                                            
+                                            
+                                            else if(quantity_behaviour == 'percentage'){
                                                 
                                                 let percentageCount  =  await helperCon.getBalancePercentage(user_id, use_wallet, quantity);  
                                                 console.log('percentageCount====>>>>>>>>>>>>>>>>> ', percentageCount ) 
@@ -1711,45 +1788,181 @@ module.exports = {
                                                 }
                                                 let collectionName = 'order_binance';
                                                 helperCon.updateOrder(order_id,  newObjectSet, collectionName)
-                                            }else{
-                    
-                                                console.log('order behaviour is missing we cannot process this order for now sorry!!!!!!!!!')
-                                                return true;
                                             }
                                         }else{
 
                                             console.log('not true !!!!!!!!!!')
                                         }
-                                        //update the order count make expire if count 0 and add how much time this rule get true
-                                    }else if(checking_symbol == 'usd'){
-                                        //coin should be USDT pairs
-                                        let priceDifference = helperCon.getVolumeCheckingForusd(select_coin, created_Date, endTime, 'binance');
+                                    }
+                                    
+                                    
 
+
+                                    else if(checking_symbol == 'usd'){
+                                        let priceDifference = await helperCon.getVolumeCheckingForusd(select_coin, created_Date, endTime, 'binance');
                                         let convertIntoUSD  = '';
-                                        if(select_coin == 'BUSDUSDT'){   //BUSDUSDT mean dollar price
+                                        if(select_coin == 'ETHBTC'){
 
                                             convertIntoUSD = priceDifference ;
                                         }else{
 
-                                            let symbolPrice = await helperCon.getMarketPrice('BUSDUSDT' , 'market_prices_binance')
+                                            let symbolPrice = await helperCon.getMarketPrice(select_coin , 'market_prices_binance')
                                             console.log('buy symbol Price ========>>>>>>>>>>>>>>>>>>>>>>>>>', symbolPrice.price);
                                             convertIntoUSD = (symbolPrice.price > 0) ? ( (symbolPrice.price) *  priceDifference ) : 0 ;
                                         }
                                         console.log('convertIntoUSD =============>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>', convertIntoUSD);
 
-                                        if(convertIntoUSD > checking_value){
+                                        if(convertIntoUSD < checking_value &&  convertIntoUSD != 0){
 
-                                            console.log('buy the order')
-                                            return true ;
+                                            if(quantity_behaviour == 'coins'){
+
+                                                let userApiKeyDetails =  await helperCon.getUserApiKeyDetails(user_id, 'binance')
+                                                let apiKey     =   userApiKeyDetails[0]['apiKey']
+                                                let secretKey  =   userApiKeyDetails[0]['secretKey']
+                                                
+                                                console.log('api Key ==============>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>', userApiKeyDetails[0]['apiKey'])
+                                                console.log('secret Key ==============>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>', userApiKeyDetails[0]['secretKey'])
+
+                                                const binance = new Binance().options({
+                                                    APIKEY      :   apiKey,
+                                                    APISECRET   :   secretKey
+                                                });
+                            
+                                                if(use_wallet == 'BTCUSDT' || use_wallet == 'BUSDUSDT'){
+                                                    
+                                                    let response = await binance.futuresMarketBuy(buy_symbol, quantity)
+                                                    console.log('response if ===>>>>>>>>>>>>', response);
+                                                    db.collection('test_buy').insertOne(response)
+                                                }else{
+                                                    
+                                                    let responseSell = await binance.futuresMarketSell( use_wallet , quantity) ;
+                                                    console.log('responseSell =>>>>>>>>>>', responseSell);
+                    
+                                                    let responseBuy  = await binance.futuresMarketBuy(buy_symbol, quantity)
+                                                    console.log('responseBuy =>>>>>>>>>>', responseBuy);
+                    
+                                                    db.collection('sell_test').insertOne(responseSell)
+                                                    db.collection('test_buy_else').insertOne(responseBuy)
+                                                }
+                                                let newObjectSet = {
+
+                                                    purchased_price_buy_symbol  : "",
+                                                    status              :  'active',
+                                                    checkingStartCount  :  (checkingStartCount -1),
+                                                    startTime           :  endTime,
+                                                    created_date  : new Date()
+                                                }
+                                                if( (checkingStartCount - 1) <= 0 ){
+                                                    
+                                                    newObjectSet['expiredForChecking'] = true ;
+                                                }
+                                                let collectionName = 'order_binance';
+                                                helperCon.updateOrder(order_id,  newObjectSet, collectionName)
+                                            }else if(quantity_behaviour == 'usd'){
+                    
+                                                if(buy_symbol == 'BTCUSDT' || buy_symbol == 'BUSDUSDT'){
+                    
+                                                    let symbolPrice = await helperCon.getMarketPrice(buy_symbol, 'market_prices_binance')
+                                                    console.log('symbolPrice.price=====>>>>>>>>>>>>>>', symbolPrice.price);
+                                                    let quantityBuy = (symbolPrice.price) * quantity ;
+                                                    console.log('buy quantity find ======>>>>>>>>>>>>>>>>>>>>>>>>>', quantityBuy)
+                    
+                                                    let response = await binance.futuresMarketBuy(buy_symbol, quantityBuy)
+                                                    console.log('response ===>>>>>>>>>>>>', response);
+                                                    db.collection('test_buy').insertOne(response)
+                                                }else{
+                    
+                                                    let symbolPrice = await helperCon.getMarketPrice(buy_symbol, 'market_prices_binance')
+                                                    console.log('symbolPrice.price=====>>>>>>>>>>>>>>', symbolPrice.price);
+                                                    let quantitysell = (symbolPrice.price) * quantity;
+                                                    console.log('buy quantity find ======>>>>>>>>>>>>>>>>>>>>>>>>>', quantitysell)
+                    
+                    
+                                                    let responseSell = await binance.futuresMarketSell( buy_symbol , quantitysell) ;
+                                                    console.log('responseSell =>>>>>>>>>>', responseSell);
+                    
+                                                    let responseBuy  = await binance.futuresMarketBuy(buy_symbol, quantitysell)
+                                                    console.log('responseBuy =>>>>>>>>>>', responseBuy);
+                    
+                                                    db.collection('sell_test').insertOne(responseSell)
+                                                    db.collection('test_buy_else').insertOne(responseBuy)
+                                                }
+                                                
+                                                let newObjectSet = {
+
+                                                    purchased_price_buy_symbol  : "",
+                                                    status              :  'active',
+                                                    checkingStartCount  :  (checkingStartCount -1),
+                                                    startTime           :  endTime,
+                                                    created_date  : new Date()
+                                                }
+                                                if( (checkingStartCount - 1) <= 0 ){
+                                                    
+                                                    newObjectSet['expiredForChecking'] = true ;
+                                                }
+                                                let collectionName = 'order_binance';
+                                                helperCon.updateOrder(order_id,  newObjectSet, collectionName)
+                    
+                                            }else if(quantity_behaviour == 'percentage'){
+                                                
+                                                let percentageCount  =  await helperCon.getBalancePercentage(user_id, use_wallet, quantity);  
+                                                console.log('percentageCount====>>>>>>>>>>>>>>>>> ', percentageCount ) 
+                                               
+                                                if(buy_symbol == 'BTCUSDT' || buy_symbol == 'ETHBTC'){
+                    
+                                                    let response = await binance.futuresMarketBuy(buy_symbol, percentageCount)
+                                                    console.log('response ===>>>>>>>>>>>>', response);
+                                                    db.collection('test_buy').insertOne(response)
+                                                }else{
+                                                    
+                                                    let responseSell = await binance.futuresMarketSell( use_wallet , percentageCount) ;
+                                                    console.log('responseSell =>>>>>>>>>>', responseSell);
+                    
+                                                    let responseBuy  = await binance.futuresMarketBuy(buy_symbol, percentageCount)
+                                                    console.log('responseBuy =>>>>>>>>>>', responseBuy);
+                    
+                                                    db.collection('sell_test').insertOne(responseSell)
+                                                    db.collection('test_buy_else').insertOne(responseBuy)
+                                                }
+                                                
+                                                let newObjectSet = {
+
+                                                    purchased_price_buy_symbol  : "",
+                                                    status              :  'active',
+                                                    checkingStartCount  :  (checkingStartCount -1),
+                                                    startTime           :  endTime,
+                                                    created_date  : new Date()
+                                                }
+                                                if( (checkingStartCount - 1) <= 0 ){
+                                                    
+                                                    newObjectSet['expiredForChecking'] = true ;
+                                                }
+                                                let collectionName = 'order_binance';
+                                                helperCon.updateOrder(order_id,  newObjectSet, collectionName)
+                                            }
                                         }else{
+                                            let newObjectSet = {
 
-                                            console.log('usd Price not true')
+                                                checkingStartCount  :  (checkingStartCount -1),
+                                                startTime           :  endTime,
+                                                created_date  : new Date()
+                                            }
+                                            if( (checkingStartCount - 1) <= 0 ){
+                                                
+                                                newObjectSet['expiredForChecking'] = true ;
+                                            }
+                                            let collectionName = 'order_binance';
+                                            helperCon.updateOrder(order_id,  newObjectSet, collectionName)
                                         }
-                                        //update the order count make expire if count 0 and add how much time this rule get true
-                                    }else {  //for BTC
-                                        //coin pair should be BTC
+                                    }//check done
+                                    
+
+
+                                    
+                                    else if(checking_symbol == 'btc') {  //for BTC
                                         let priceDifference = helperCon.getVolumeCheckingForusd(select_coin, created_Date, endTime, exchange);
                                         if(priceDifference != 0){
+
                                             let convertIntoBTC  = '';
                                             if(select_coin == 'BTCUSDT'){
 
@@ -1758,24 +1971,64 @@ module.exports = {
 
                                                 let symbolPrice = await helperCon.getMarketPrice('BTCUSDT' , 'market_prices_binance')
                                                 console.log('buy symbol Price ========>>>>>>>>>>>>>>>>>>>>>>>>>', symbolPrice.price);
+
                                                 convertIntoBTC =  ( symbolPrice.price ) * priceDifference ;
                                             }
+
                                             if(convertIntoBTC > checking_value){
+                                                if(buy_symbol == 'BTCUSDT' || buy_symbol == 'BUSDUSDT'){
+                    
+                                                    let response = await binance.futuresMarketBuy(buy_symbol, convertIntoBTC)
+                                                    console.log('response ===>>>>>>>>>>>>', response);
+                                                    db.collection('test_buy').insertOne(response)
+                                                }else{
+                                                    
+                                                    let responseSell = await binance.futuresMarketSell( use_wallet , convertIntoBTC) ;
+                                                    console.log('responseSell =>>>>>>>>>>', responseSell);
+                    
+                                                    let responseBuy  = await binance.futuresMarketBuy(buy_symbol, convertIntoBTC)
+                                                    console.log('responseBuy =>>>>>>>>>>', responseBuy);
+                    
+                                                    db.collection('sell_test').insertOne(responseSell)
+                                                    db.collection('test_buy_else').insertOne(responseBuy)
+                                                }
 
-                                                console.log('buy the coin')
-                                                return true ;
+
+                                                let newObjectSet = {
+                                                    checkingStartCount  :  (checkingStartCount -1),
+                                                    startTime           :  endTime,
+                                                    created_date  : new Date(),
+                                                    purchased_price_buy_symbol : '',
+                                                    status         :  'active'
+                                                }
+                                                if( (checkingStartCount - 1) <= 0 ){
+                                                    
+                                                    newObjectSet['expiredForChecking'] = true ;
+                                                }
+                                                let collectionName = 'order_binance';
+                                                helperCon.updateOrder(order_id,  newObjectSet, collectionName)
+
                                             }else{
-
-                                                console.log('BTC Price not True else')
+                    
+                                                let newObjectSet = {
+                                                    checkingStartCount  :  (checkingStartCount -1),
+                                                    startTime           :  endTime,
+                                                    created_date  : new Date()
+                                                }
+                                                if( (checkingStartCount - 1) <= 0 ){
+                                                    
+                                                    newObjectSet['expiredForChecking'] = true ;
+                                                }
+                                                let collectionName = 'order_binance';
+                                                helperCon.updateOrder(order_id,  newObjectSet, collectionName)
                                             }
-                                        }else{
-
-                                            console.log('<<<<<<<<<<<<<<<=============   priceDifference is zero    ============>>>>>>>>>>>>>>>>>>>>')
                                         }
-                                        //update the order count make expire if count 0 and add how much time this rule get true
-                                        return true;
-                                    }
-                                }else if(has_checking == 'decrease'){
+                                    }//check done
+                                }
+                                
+                                
+                                
+                                else if(has_checking == 'decrease'){
                                 
                                     if(checking_symbol == 'percentage'){
                                         let volume = await helperCon.getVolumeCheckingForPercentage(select_coin, created_Date, endTime, exchange);
@@ -2199,7 +2452,11 @@ module.exports = {
                                         return true;
                                     }
 
-                                }else if(has_checking == 'lower'){
+                                }
+                                
+                                
+                                
+                                else if(has_checking == 'lower'){
                                     if(checking_symbol == 'percentage'){
                                         let volume = await helperCon.getVolumeCheckingForPercentage(select_coin, created_Date, endTime, exchange);
                                         console.log('volume=============>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>', volume);
@@ -2622,7 +2879,12 @@ module.exports = {
                                         return true;
                                     }
 
-                                }else if(has_checking == 'greater'){
+                                }
+                                
+                                
+                                
+                                
+                                else if(has_checking == 'greater'){
                                     if(checking_symbol == 'percentage'){
                                         let volume = await helperCon.getVolumeCheckingForPercentage(select_coin, created_Date, endTime, exchange);
                                         console.log('volume=============>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>', volume);
@@ -2781,13 +3043,1200 @@ module.exports = {
                                         return true;
                                     }
                                 }
-                            }else if(has_condition == 'marketcap'){
-
-                               
-                            }else{
-                                console.log(' Wrong condition')
-                                return true;
                             }
+                            //end===================================================================================
+                            
+                           
+                            else if(has_condition == 'marketcap'){
+                                
+                                if(has_checking == 'increase'){
+                                    if(checking_symbol == 'percentage'){
+                                        let volume = await helperCon.getCoinMarketCapVolumeCheckingForPercentage(select_coin, created_Date, endTime, exchange);
+
+                                        console.log('volume=============>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>', volume);
+                                        if(volume > checking_value){
+
+                                            if(quantity_behaviour == 'coins'){
+                                                if(use_wallet == 'BTCUSDT' || use_wallet == 'BUSDUSDT'){
+                                                    
+                                                    let response = await binance.futuresMarketBuy(buy_symbol, quantity)
+                                                    console.log('response if ===>>>>>>>>>>>>', response);
+                                                    db.collection('test_buy').insertOne(response)
+                                                }else{
+                                                    
+                                                    let responseSell = await binance.futuresMarketSell( use_wallet , quantity) ;
+                                                    console.log('responseSell =>>>>>>>>>>', responseSell);
+                    
+                                                    let responseBuy  = await binance.futuresMarketBuy(buy_symbol, quantity)
+                                                    console.log('responseBuy =>>>>>>>>>>', responseBuy);
+                    
+                                                    db.collection('sell_test').insertOne(responseSell)
+                                                    db.collection('test_buy_else').insertOne(responseBuy)
+                                                }
+                                                let newObjectSet = {
+                                                    purchased_price_buy_symbol  : "",
+                                                    status   :  'active'
+                                                }
+                                                let collectionName = 'order_binance';
+                                                helperCon.updateOrder(order_id,  newObjectSet, collectionName)
+                                            }else if(quantity_behaviour == 'usd'){
+                    
+                                                if(buy_symbol == 'BTCUSDT' || buy_symbol == 'BUSDUSDT'){
+                    
+                                                    let symbolPrice = await helperCon.getMarketPrice(buy_symbol, 'market_prices_binance')
+                                                    console.log('symbolPrice.price=====>>>>>>>>>>>>>>', symbolPrice.price);
+                                                    let quantityBuy = (symbolPrice.price) * quantity ;
+                                                    console.log('buy quantity find ======>>>>>>>>>>>>>>>>>>>>>>>>>', quantityBuy)
+                    
+                                                    let response = await binance.futuresMarketBuy(buy_symbol, quantityBuy)
+                                                    console.log('response ===>>>>>>>>>>>>', response);
+                                                    db.collection('test_buy').insertOne(response)
+                                                }else{
+                    
+                                                    let symbolPrice = await helperCon.getMarketPrice(buy_symbol, 'market_prices_binance')
+                                                    console.log('symbolPrice.price=====>>>>>>>>>>>>>>', symbolPrice.price);
+                                                    let quantitysell = (symbolPrice.price) * quantity;
+                                                    console.log('buy quantity find ======>>>>>>>>>>>>>>>>>>>>>>>>>', quantitysell)
+                    
+                    
+                                                    let responseSell = await binance.futuresMarketSell( buy_symbol , quantitysell) ;
+                                                    console.log('responseSell =>>>>>>>>>>', responseSell);
+                    
+                                                    let responseBuy  = await binance.futuresMarketBuy(buy_symbol, quantitysell)
+                                                    console.log('responseBuy =>>>>>>>>>>', responseBuy);
+                    
+                                                    db.collection('sell_test').insertOne(responseSell)
+                                                    db.collection('test_buy_else').insertOne(responseBuy)
+                                                }
+
+                                                let newObjectSet = {
+
+                                                    checkingStartCount  :  (checkingStartCount -1),
+                                                    startTime           :  endTime,
+                                                    created_date  : new Date(),
+                                                    purchased_price_buy_symbol : '',
+                                                    status : 'active'
+                                                }
+                                                if( (checkingStartCount - 1) <= 0 ){
+                                                    
+                                                    newObjectSet['expiredForChecking'] = true ;
+                                                }
+                                                let collectionName = 'order_binance';
+                                                helperCon.updateOrder(order_id,  newObjectSet, collectionName)
+
+                                            }else if(quantity_behaviour == 'percentage'){
+                                                
+                                                let percentageCount  =  await helperCon.getBalancePercentage(user_id, use_wallet, quantity);  
+                                                console.log('percentageCount====>>>>>>>>>>>>>>>>> ', percentageCount ) 
+                                               
+                                                if(buy_symbol == 'BTCUSDT' || buy_symbol == 'ETHBTC'){
+                    
+                                                    let response = await binance.futuresMarketBuy(buy_symbol, percentageCount)
+                                                    console.log('response ===>>>>>>>>>>>>', response);
+                                                    db.collection('test_buy').insertOne(response)
+                                                }else{
+                                                    
+                                                    let responseSell = await binance.futuresMarketSell( use_wallet , percentageCount) ;
+                                                    console.log('responseSell =>>>>>>>>>>', responseSell);
+                    
+                                                    let responseBuy  = await binance.futuresMarketBuy(buy_symbol, percentageCount)
+                                                    console.log('responseBuy =>>>>>>>>>>', responseBuy);
+                    
+                                                    db.collection('sell_test').insertOne(responseSell)
+                                                    db.collection('test_buy_else').insertOne(responseBuy)
+                                                }
+                                            
+                                                let newObjectSet = {
+                                                    checkingStartCount  :  (checkingStartCount -1),
+                                                    startTime           :  endTime,
+                                                    created_date        :  new Date(),
+                                                    purchased_price_buy_symbol : '',
+                                                    status : "active"
+                                                }
+                                                if( (checkingStartCount - 1) <= 0 ){
+                                                    
+                                                    newObjectSet['expiredForChecking'] = true ;
+                                                }
+                                                let collectionName = 'order_binance';
+                                                helperCon.updateOrder(order_id,  newObjectSet, collectionName)
+                                            }
+                                        }else{
+
+                                            let newObjectSet = {
+                                                checkingStartCount  :  (checkingStartCount -1),
+                                                startTime           :  endTime,
+                                                created_date  : new Date()
+                                            }
+                                            if( (checkingStartCount - 1) <= 0 ){
+                                                
+                                                newObjectSet['expiredForChecking'] = true ;
+                                            }
+                                            let collectionName = 'order_binance';
+                                            helperCon.updateOrder(order_id,  newObjectSet, collectionName)
+                                        }
+                                        //update the order count make expire if count 0 and add how much time this rule get true
+                                    }else if(checking_symbol == 'usd'){
+                                        //coin should be USDT pairs
+                                        let priceDifference = helperCon.getPriceCheckingForusdInCoinMarketCap(select_coin, created_Date, endTime, 'binance');
+
+                                        let convertIntoUSD  = '';
+                                        if(select_coin == 'BUSDUSDT'){   //BUSDUSDT mean dollar price
+
+                                            convertIntoUSD = priceDifference ;
+                                        }else{
+
+                                            let symbolPrice = await helperCon.getMarketPrice('BUSDUSDT' , 'market_prices_binance')
+                                            console.log('buy symbol Price ========>>>>>>>>>>>>>>>>>>>>>>>>>', symbolPrice.price);
+                                            convertIntoUSD = (symbolPrice.price > 0) ? ( (symbolPrice.price) *  priceDifference ) : 0 ;
+                                        }
+                                        console.log('convertIntoUSD =============>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>', convertIntoUSD);
+
+                                        if(convertIntoUSD > checking_value){
+
+                                            console.log('buy the order')
+                                            return true ;
+                                        }else{
+
+                                            console.log('usd Price not true')
+                                        }
+                                        //update the order count make expire if count 0 and add how much time this rule get true
+                                    }else {  //for BTC
+                                        //coin pair should be BTC
+                                        let priceDifference = helperCon.getPriceCheckingForusdInCoinMarketCap(select_coin, created_Date, endTime, exchange);
+                                        if(priceDifference != 0){
+                                            let convertIntoBTC  = '';
+                                            if(select_coin == 'BTCUSDT'){
+
+                                                convertIntoBTC = priceDifference ;
+                                            }else{
+
+                                                let symbolPrice = await helperCon.getMarketPrice('BTCUSDT' , 'market_prices_binance')
+                                                console.log('buy symbol Price ========>>>>>>>>>>>>>>>>>>>>>>>>>', symbolPrice.price);
+                                                convertIntoBTC =  ( symbolPrice.price ) * priceDifference ;
+                                            }
+                                            if(convertIntoBTC > checking_value){
+
+                                                console.log('buy the coin')
+                                                return true ;
+                                            }
+                                        }else{
+
+                                            console.log('<<<<<<<<<<<<<<<=============   priceDifference is zero    ============>>>>>>>>>>>>>>>>>>>>')
+                                        }
+                                        //update the order count make expire if count 0 and add how much time this rule get true
+                                        return true;
+                                    }
+                                }else if(has_checking == 'decrease'){
+                                
+                                    if(checking_symbol == 'percentage'){
+                                        let volume = await helperCon.getVolumeCheckingForPercentage(select_coin, created_Date, endTime, exchange);
+                                        console.log('volume=============>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>', volume);
+                                        if(volume < checking_value && volume != 0 ){
+
+                                            if(quantity_behaviour == 'coins'){
+
+                                                if(use_wallet == 'BTCUSDT' || use_wallet == 'BUSDUSDT'){
+                                                    
+                                                    let response = await binance.futuresMarketBuy(buy_symbol, quantity)
+                                                    console.log('response if ===>>>>>>>>>>>>', response);
+                                                    db.collection('test_buy').insertOne(response)
+                                                }else{
+                                                    
+                                                    let responseSell = await binance.futuresMarketSell( use_wallet , quantity) ;
+                                                    console.log('responseSell =>>>>>>>>>>', responseSell);
+                    
+                                                    let responseBuy  = await binance.futuresMarketBuy(buy_symbol, quantity)
+                                                    console.log('responseBuy =>>>>>>>>>>', responseBuy);
+                    
+                                                    db.collection('sell_test').insertOne(responseSell)
+                                                    db.collection('test_buy_else').insertOne(responseBuy)
+                                                }
+                                                let newObjectSet = {
+
+                                                    purchased_price_buy_symbol  : "",
+                                                    status              :  'active',
+                                                    checkingStartCount  :  (checkingStartCount -1),
+                                                    startTime           :  endTime,
+                                                    created_date  : new Date()
+                                                }
+                                                if( (checkingStartCount - 1) <= 0 ){
+                                                    
+                                                    newObjectSet['expiredForChecking'] = true ;
+                                                }
+                                                helperCon.updateOrder(order_id,  newObjectSet, collectionName)
+                                            }else if(quantity_behaviour == 'usd'){
+                    
+                                                if(buy_symbol == 'BTCUSDT' || buy_symbol == 'BUSDUSDT'){
+                    
+                                                    let symbolPrice = await helperCon.getMarketPrice(buy_symbol, 'market_prices_binance')
+                                                    console.log('symbolPrice.price=====>>>>>>>>>>>>>>', symbolPrice.price);
+                                                    let quantityBuy = (symbolPrice.price) * quantity ;
+                                                    console.log('buy quantity find ======>>>>>>>>>>>>>>>>>>>>>>>>>', quantityBuy)
+                    
+                                                    let response = await binance.futuresMarketBuy(buy_symbol, quantityBuy)
+                                                    console.log('response ===>>>>>>>>>>>>', response);
+                                                    db.collection('test_buy').insertOne(response)
+                                                }else{
+                    
+                                                    let symbolPrice = await helperCon.getMarketPrice(buy_symbol, 'market_prices_binance')
+                                                    console.log('symbolPrice.price=====>>>>>>>>>>>>>>', symbolPrice.price);
+                                                    let quantitysell = (symbolPrice.price) * quantity;
+                                                    console.log('buy quantity find ======>>>>>>>>>>>>>>>>>>>>>>>>>', quantitysell)
+                    
+                    
+                                                    let responseSell = await binance.futuresMarketSell( buy_symbol , quantitysell) ;
+                                                    console.log('responseSell =>>>>>>>>>>', responseSell);
+                    
+                                                    let responseBuy  = await binance.futuresMarketBuy(buy_symbol, quantitysell)
+                                                    console.log('responseBuy =>>>>>>>>>>', responseBuy);
+                    
+                                                    db.collection('sell_test').insertOne(responseSell)
+                                                    db.collection('test_buy_else').insertOne(responseBuy)
+                                                }
+                                                
+                                                let newObjectSet = {
+
+                                                    purchased_price_buy_symbol  : "",
+                                                    status              :  'active',
+                                                    checkingStartCount  :  (checkingStartCount -1),
+                                                    startTime           :  endTime,
+                                                    created_date  : new Date()
+                                                }
+                                                if( (checkingStartCount - 1) <= 0 ){
+                                                    
+                                                    newObjectSet['expiredForChecking'] = true ;
+                                                }
+                                                let collectionName = 'order_binance';
+                                                helperCon.updateOrder(order_id,  newObjectSet, collectionName)
+                    
+                                            }else if(quantity_behaviour == 'percentage'){
+                                                
+                                                let percentageCount  =  await helperCon.getBalancePercentage(user_id, use_wallet, quantity);  
+                                                console.log('percentageCount====>>>>>>>>>>>>>>>>> ', percentageCount ) 
+                                               
+                                                if(buy_symbol == 'BTCUSDT' || buy_symbol == 'ETHBTC'){
+                    
+                                                    let response = await binance.futuresMarketBuy(buy_symbol, percentageCount)
+                                                    console.log('response ===>>>>>>>>>>>>', response);
+                                                    db.collection('test_buy').insertOne(response)
+                                                }else{
+                                                    
+                                                    let responseSell = await binance.futuresMarketSell( use_wallet , percentageCount) ;
+                                                    console.log('responseSell =>>>>>>>>>>', responseSell);
+                    
+                                                    let responseBuy  = await binance.futuresMarketBuy(buy_symbol, percentageCount)
+                                                    console.log('responseBuy =>>>>>>>>>>', responseBuy);
+                    
+                                                    db.collection('sell_test').insertOne(responseSell)
+                                                    db.collection('test_buy_else').insertOne(responseBuy)
+                                                }
+                                                
+                                                let newObjectSet = {
+
+                                                    purchased_price_buy_symbol  : "",
+                                                    status              :  'active',
+                                                    checkingStartCount  :  (checkingStartCount -1),
+                                                    startTime           :  endTime,
+                                                    created_date  : new Date()
+                                                }
+                                                if( (checkingStartCount - 1) <= 0 ){
+                                                    
+                                                    newObjectSet['expiredForChecking'] = true ;
+                                                }
+                                                let collectionName = 'order_binance';
+                                                helperCon.updateOrder(order_id,  newObjectSet, collectionName)
+                                            }else{
+                    
+                                                console.log('order behaviour is missing we cannot process this order for now sorry!!!!!!!!!')
+                                                return true;
+                                            }
+                                        }else{
+                                            
+                                            let newObjectSet = {
+                                                checkingStartCount  :  (checkingStartCount -1),
+                                                startTime           :  endTime,
+                                                created_date  : new Date()
+                                            }
+                                            if( (checkingStartCount - 1) <= 0 ){
+                                                
+                                                newObjectSet['expiredForChecking'] = true ;
+                                            }
+
+                                            let collectionName = 'order_binance';
+                                            helperCon.updateOrder(order_id,  newObjectSet, collectionName)
+                                        }
+                                        //update the order count make expire if count 0 and add how much time this rule get true
+                                    }else if(checking_symbol == 'usd'){
+
+                                        let priceDifference = await helperCon.getVolumeCheckingForusd(select_coin, created_Date, endTime, 'binance');
+                                        let convertIntoUSD  = '';
+                                        if(select_coin == 'BUSDUSDT'){
+
+                                            convertIntoUSD = priceDifference ;
+                                        }else{
+
+                                            let symbolPrice = await helperCon.getMarketPrice('BUSDUSDT' , 'market_prices_binance')
+                                            console.log('buy symbol Price ========>>>>>>>>>>>>>>>>>>>>>>>>>', symbolPrice.price);
+                                            convertIntoUSD = (symbolPrice.price > 0) ? ( (symbolPrice.price) *  priceDifference ) : 0 ;
+                                        }
+                                        console.log('convertIntoUSD =============>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>', convertIntoUSD);
+
+                                        if(convertIntoUSD < checking_value &&  convertIntoUSD != 0){
+
+                                            if(quantity_behaviour == 'coins'){
+
+                                                let userApiKeyDetails =  await helperCon.getUserApiKeyDetails(user_id, 'binance')
+                                                let apiKey     =   userApiKeyDetails[0]['apiKey']
+                                                let secretKey  =   userApiKeyDetails[0]['secretKey']
+                                                
+                                                console.log('api Key ==============>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>', userApiKeyDetails[0]['apiKey'])
+                                                console.log('secret Key ==============>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>', userApiKeyDetails[0]['secretKey'])
+
+                                                const binance = new Binance().options({
+                                                    APIKEY      :   apiKey,
+                                                    APISECRET   :   secretKey
+                                                });
+                            
+                                                if(use_wallet == 'BTCUSDT' || use_wallet == 'BUSDUSDT'){
+                                                    
+                                                    let response = await binance.futuresMarketBuy(buy_symbol, quantity)
+                                                    console.log('response if ===>>>>>>>>>>>>', response);
+                                                    db.collection('test_buy').insertOne(response)
+                                                }else{
+                                                    
+                                                    let responseSell = await binance.futuresMarketSell( use_wallet , quantity) ;
+                                                    console.log('responseSell =>>>>>>>>>>', responseSell);
+                    
+                                                    let responseBuy  = await binance.futuresMarketBuy(buy_symbol, quantity)
+                                                    console.log('responseBuy =>>>>>>>>>>', responseBuy);
+                    
+                                                    db.collection('sell_test').insertOne(responseSell)
+                                                    db.collection('test_buy_else').insertOne(responseBuy)
+                                                }
+                                                let newObjectSet = {
+                                                    purchased_price_buy_symbol  : "",
+                                                    status   :  'active'
+                                                }
+                                                let collectionName = 'order_binance';
+                                                helperCon.updateOrder(order_id,  newObjectSet, collectionName)
+                                            }else if(quantity_behaviour == 'usd'){
+                    
+                                                if(buy_symbol == 'BTCUSDT' || buy_symbol == 'BUSDUSDT'){
+                    
+                                                    let symbolPrice = await helperCon.getMarketPrice(buy_symbol, 'market_prices_binance')
+                                                    console.log('symbolPrice.price=====>>>>>>>>>>>>>>', symbolPrice.price);
+                                                    let quantityBuy = (symbolPrice.price) * quantity ;
+                                                    console.log('buy quantity find ======>>>>>>>>>>>>>>>>>>>>>>>>>', quantityBuy)
+                    
+                                                    let response = await binance.futuresMarketBuy(buy_symbol, quantityBuy)
+                                                    console.log('response ===>>>>>>>>>>>>', response);
+                                                    db.collection('test_buy').insertOne(response)
+                                                }else{
+                    
+                                                    let symbolPrice = await helperCon.getMarketPrice(buy_symbol, 'market_prices_binance')
+                                                    console.log('symbolPrice.price=====>>>>>>>>>>>>>>', symbolPrice.price);
+                                                    let quantitysell = (symbolPrice.price) * quantity;
+                                                    console.log('buy quantity find ======>>>>>>>>>>>>>>>>>>>>>>>>>', quantitysell)
+                    
+                    
+                                                    let responseSell = await binance.futuresMarketSell( buy_symbol , quantitysell) ;
+                                                    console.log('responseSell =>>>>>>>>>>', responseSell);
+                    
+                                                    let responseBuy  = await binance.futuresMarketBuy(buy_symbol, quantitysell)
+                                                    console.log('responseBuy =>>>>>>>>>>', responseBuy);
+                    
+                                                    db.collection('sell_test').insertOne(responseSell)
+                                                    db.collection('test_buy_else').insertOne(responseBuy)
+                                                }
+                                                
+                                                let newObjectSet = {
+                                                    purchased_price_buy_symbol  : "",
+                                                    status   :  'active'
+                                                }
+                                                let collectionName = 'order_binance';
+                                                helperCon.updateOrder(order_id,  newObjectSet, collectionName)
+                    
+                                            }else if(quantity_behaviour == 'percentage'){
+                                                
+                                                let percentageCount  =  await helperCon.getBalancePercentage(user_id, use_wallet, quantity);  
+                                                console.log('percentageCount====>>>>>>>>>>>>>>>>> ', percentageCount ) 
+                                               
+                                                if(buy_symbol == 'BTCUSDT' || buy_symbol == 'ETHBTC'){
+                    
+                                                    let response = await binance.futuresMarketBuy(buy_symbol, percentageCount)
+                                                    console.log('response ===>>>>>>>>>>>>', response);
+                                                    db.collection('test_buy').insertOne(response)
+                                                }else{
+                                                    
+                                                    let responseSell = await binance.futuresMarketSell( use_wallet , percentageCount) ;
+                                                    console.log('responseSell =>>>>>>>>>>', responseSell);
+                    
+                                                    let responseBuy  = await binance.futuresMarketBuy(buy_symbol, percentageCount)
+                                                    console.log('responseBuy =>>>>>>>>>>', responseBuy);
+                    
+                                                    db.collection('sell_test').insertOne(responseSell)
+                                                    db.collection('test_buy_else').insertOne(responseBuy)
+                                                }
+                                                
+                                                let newObjectSet = {
+                                                    purchased_price_buy_symbol  : "",
+                                                    status   :  'active'
+                                                }
+                                                let collectionName = 'order_binance';
+                                                helperCon.updateOrder(order_id,  newObjectSet, collectionName)
+                                            }else{
+                    
+                                                console.log('order behaviour is missing we cannot process this order for now sorry!!!!!!!!!')
+                                                return true;
+                                            }
+                                            console.log('buy the order ');
+                                        }else{
+
+                                            let newObjectSet = {
+
+                                                checkingStartCount  :  (checkingStartCount -1)
+                                            }
+                                            if( (checkingStartCount - 1) <= 0 ){
+                                                
+                                                newObjectSet['expiredForChecking'] = true ;
+                                            }
+
+                                            let collectionName = 'order_binance';
+                                            helperCon.updateOrder(order_id,  newObjectSet, collectionName)
+                                        }
+                                        //update the order count make expire if count 0 and add how much time this rule get true
+                                    }else {  //for BTC
+                                        let priceDifference = helperCon.getVolumeCheckingForusd(select_coin, created_Date, endTime, exchange);
+                                        if(priceDifference != 0){
+
+                                            let convertIntoBTC  = '';
+                                            if(select_coin == 'BTCUSDT'){
+
+                                                convertIntoBTC = priceDifference ;
+                                            }else{
+
+                                                let symbolPrice = await helperCon.getMarketPrice(select_coin , 'market_prices_binance')
+                                                console.log('buy symbol Price ========>>>>>>>>>>>>>>>>>>>>>>>>>', symbolPrice.price);
+
+                                                convertIntoBTC =  ( symbolPrice.price ) * priceDifference ;
+                                            }
+
+                                            if(convertIntoBTC < checking_value && convertIntoBTC != 0 ){
+
+                                                if(quantity_behaviour == 'coins'){
+
+                                                    let userApiKeyDetails =  await helperCon.getUserApiKeyDetails(user_id, 'binance')
+                                                    let apiKey     =   userApiKeyDetails[0]['apiKey']
+                                                    let secretKey  =   userApiKeyDetails[0]['secretKey']
+                                                    
+                                                    console.log('api Key ==============>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>', userApiKeyDetails[0]['apiKey'])
+                                                    console.log('secret Key ==============>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>', userApiKeyDetails[0]['secretKey'])
+    
+                                                    const binance = new Binance().options({
+                                                        APIKEY      :   apiKey,
+                                                        APISECRET   :   secretKey
+                                                    });
+                                
+                                                    if(use_wallet == 'BTCUSDT' || use_wallet == 'BUSDUSDT'){
+                                                        
+                                                        let response = await binance.futuresMarketBuy(buy_symbol, quantity)
+                                                        console.log('response if ===>>>>>>>>>>>>', response);
+                                                        db.collection('test_buy').insertOne(response)
+                                                    }else{
+                                                        
+                                                        let responseSell = await binance.futuresMarketSell( use_wallet , quantity) ;
+                                                        console.log('responseSell =>>>>>>>>>>', responseSell);
+                        
+                                                        let responseBuy  = await binance.futuresMarketBuy(buy_symbol, quantity)
+                                                        console.log('responseBuy =>>>>>>>>>>', responseBuy);
+                        
+                                                        db.collection('sell_test').insertOne(responseSell)
+                                                        db.collection('test_buy_else').insertOne(responseBuy)
+                                                    }
+                                                    let newObjectSet = {
+                                                        purchased_price_buy_symbol  : "",
+                                                        status   :  'active'
+                                                    }
+                                                    let collectionName = 'order_binance';
+                                                    helperCon.updateOrder(order_id,  newObjectSet, collectionName)
+                                                }else if(quantity_behaviour == 'usd'){
+                        
+                                                    if(buy_symbol == 'BTCUSDT' || buy_symbol == 'BUSDUSDT'){
+                        
+                                                        let symbolPrice = await helperCon.getMarketPrice(buy_symbol, 'market_prices_binance')
+                                                        console.log('symbolPrice.price=====>>>>>>>>>>>>>>', symbolPrice.price);
+                                                        let quantityBuy = (symbolPrice.price) * quantity ;
+                                                        console.log('buy quantity find ======>>>>>>>>>>>>>>>>>>>>>>>>>', quantityBuy)
+                        
+                                                        let response = await binance.futuresMarketBuy(buy_symbol, quantityBuy)
+                                                        console.log('response ===>>>>>>>>>>>>', response);
+                                                        db.collection('test_buy').insertOne(response)
+                                                    }else{
+                        
+                                                        let symbolPrice = await helperCon.getMarketPrice(buy_symbol, 'market_prices_binance')
+                                                        console.log('symbolPrice.price=====>>>>>>>>>>>>>>', symbolPrice.price);
+                                                        let quantitysell = (symbolPrice.price) * quantity;
+                                                        console.log('buy quantity find ======>>>>>>>>>>>>>>>>>>>>>>>>>', quantitysell)
+                        
+                        
+                                                        let responseSell = await binance.futuresMarketSell( buy_symbol , quantitysell) ;
+                                                        console.log('responseSell =>>>>>>>>>>', responseSell);
+                        
+                                                        let responseBuy  = await binance.futuresMarketBuy(buy_symbol, quantitysell)
+                                                        console.log('responseBuy =>>>>>>>>>>', responseBuy);
+                        
+                                                        db.collection('sell_test').insertOne(responseSell)
+                                                        db.collection('test_buy_else').insertOne(responseBuy)
+                                                    }
+                                                    
+                                                    let newObjectSet = {
+                                                        purchased_price_buy_symbol  : "",
+                                                        status   :  'active'
+                                                    }
+                                                    let collectionName = 'order_binance';
+                                                    helperCon.updateOrder(order_id,  newObjectSet, collectionName)
+                        
+                                                }else if(quantity_behaviour == 'percentage'){
+                                                    
+                                                    let percentageCount  =  await helperCon.getBalancePercentage(user_id, use_wallet, quantity);  
+                                                    console.log('percentageCount====>>>>>>>>>>>>>>>>> ', percentageCount ) 
+                                                   
+                                                    if(buy_symbol == 'BTCUSDT' || buy_symbol == 'ETHBTC'){
+                        
+                                                        let response = await binance.futuresMarketBuy(buy_symbol, percentageCount)
+                                                        console.log('response ===>>>>>>>>>>>>', response);
+                                                        db.collection('test_buy').insertOne(response)
+                                                    }else{
+                                                        
+                                                        let responseSell = await binance.futuresMarketSell( use_wallet , percentageCount) ;
+                                                        console.log('responseSell =>>>>>>>>>>', responseSell);
+                        
+                                                        let responseBuy  = await binance.futuresMarketBuy(buy_symbol, percentageCount)
+                                                        console.log('responseBuy =>>>>>>>>>>', responseBuy);
+                        
+                                                        db.collection('sell_test').insertOne(responseSell)
+                                                        db.collection('test_buy_else').insertOne(responseBuy)
+                                                    }
+                                                    
+                                                    let newObjectSet = {
+                                                        purchased_price_buy_symbol  : "",
+                                                        status   :  'completed'
+                                                    }
+                                                    let collectionName = 'order_binance';
+                                                    helperCon.updateOrder(order_id,  newObjectSet, collectionName)
+                                                }else{
+                        
+                                                    console.log('order behaviour is missing we cannot process this order for now sorry!!!!!!!!!')
+                                                    return true;
+                                                }
+                                            }else{
+                                                let newObjectSet = {
+
+                                                    checkingStartCount  :  (checkingStartCount -1)
+                                                }
+                                                if( (checkingStartCount - 1) <= 0 ){
+                                                    
+                                                    newObjectSet['expiredForChecking'] = true ;
+                                                }
+
+                                                let collectionName = 'order_binance';
+                                                helperCon.updateOrder(order_id,  newObjectSet, collectionName)
+                                            }
+                                        }else{
+
+                                            console.log('<<<<<<<<<<<<<<<=============   priceDifference is zero    ============>>>>>>>>>>>>>>>>>>>>')
+                                        }
+                                        //update the order count make expire if count 0 and add how much time this rule get true
+                                        return true;
+                                    }
+
+                                }else if(has_checking == 'lower'){
+                                    if(checking_symbol == 'percentage'){
+                                        let volume = await helperCon.getVolumeCheckingForPercentage(select_coin, created_Date, endTime, exchange);
+                                        console.log('volume=============>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>', volume);
+                                        if(volume < checking_value && volume != 0 ){
+
+                                            if(quantity_behaviour == 'coins'){
+
+                                                if(use_wallet == 'BTCUSDT' || use_wallet == 'BUSDUSDT'){
+                                                    
+                                                    let response = await binance.futuresMarketBuy(buy_symbol, quantity)
+                                                    console.log('response if ===>>>>>>>>>>>>', response);
+                                                    db.collection('test_buy').insertOne(response)
+                                                }else{
+                                                    
+                                                    let responseSell = await binance.futuresMarketSell( use_wallet , quantity) ;
+                                                    console.log('responseSell =>>>>>>>>>>', responseSell);
+                    
+                                                    let responseBuy  = await binance.futuresMarketBuy(buy_symbol, quantity)
+                                                    console.log('responseBuy =>>>>>>>>>>', responseBuy);
+                    
+                                                    db.collection('sell_test').insertOne(responseSell)
+                                                    db.collection('test_buy_else').insertOne(responseBuy)
+                                                }
+                                                let newObjectSet = {
+
+                                                    purchased_price_buy_symbol  : "",
+                                                    status              :  'active',
+                                                    checkingStartCount  :  (checkingStartCount -1),
+                                                    startTime           :  endTime,
+                                                    created_date  : new Date()
+                                                }
+                                                if( (checkingStartCount - 1) <= 0 ){
+                                                    
+                                                    newObjectSet['expiredForChecking'] = true ;
+                                                }
+                                                helperCon.updateOrder(order_id,  newObjectSet, collectionName)
+                                            }else if(quantity_behaviour == 'usd'){
+                    
+                                                if(buy_symbol == 'BTCUSDT' || buy_symbol == 'BUSDUSDT'){
+                    
+                                                    let symbolPrice = await helperCon.getMarketPrice(buy_symbol, 'market_prices_binance')
+                                                    console.log('symbolPrice.price=====>>>>>>>>>>>>>>', symbolPrice.price);
+                                                    let quantityBuy = (symbolPrice.price) * quantity ;
+                                                    console.log('buy quantity find ======>>>>>>>>>>>>>>>>>>>>>>>>>', quantityBuy)
+                    
+                                                    let response = await binance.futuresMarketBuy(buy_symbol, quantityBuy)
+                                                    console.log('response ===>>>>>>>>>>>>', response);
+                                                    db.collection('test_buy').insertOne(response)
+                                                }else{
+                    
+                                                    let symbolPrice = await helperCon.getMarketPrice(buy_symbol, 'market_prices_binance')
+                                                    console.log('symbolPrice.price=====>>>>>>>>>>>>>>', symbolPrice.price);
+                                                    let quantitysell = (symbolPrice.price) * quantity;
+                                                    console.log('buy quantity find ======>>>>>>>>>>>>>>>>>>>>>>>>>', quantitysell)
+                    
+                    
+                                                    let responseSell = await binance.futuresMarketSell( buy_symbol , quantitysell) ;
+                                                    console.log('responseSell =>>>>>>>>>>', responseSell);
+                    
+                                                    let responseBuy  = await binance.futuresMarketBuy(buy_symbol, quantitysell)
+                                                    console.log('responseBuy =>>>>>>>>>>', responseBuy);
+                    
+                                                    db.collection('sell_test').insertOne(responseSell)
+                                                    db.collection('test_buy_else').insertOne(responseBuy)
+                                                }
+                                                
+                                                let newObjectSet = {
+
+                                                    purchased_price_buy_symbol  : "",
+                                                    status              :  'active',
+                                                    checkingStartCount  :  (checkingStartCount -1),
+                                                    startTime           :  endTime,
+                                                    created_date  : new Date()
+                                                }
+                                                if( (checkingStartCount - 1) <= 0 ){
+                                                    
+                                                    newObjectSet['expiredForChecking'] = true ;
+                                                }
+                                                let collectionName = 'order_binance';
+                                                helperCon.updateOrder(order_id,  newObjectSet, collectionName)
+                    
+                                            }else if(quantity_behaviour == 'percentage'){
+                                                
+                                                let percentageCount  =  await helperCon.getBalancePercentage(user_id, use_wallet, quantity);  
+                                                console.log('percentageCount====>>>>>>>>>>>>>>>>> ', percentageCount ) 
+                                               
+                                                if(buy_symbol == 'BTCUSDT' || buy_symbol == 'ETHBTC'){
+                    
+                                                    let response = await binance.futuresMarketBuy(buy_symbol, percentageCount)
+                                                    console.log('response ===>>>>>>>>>>>>', response);
+                                                    db.collection('test_buy').insertOne(response)
+                                                }else{
+                                                    
+                                                    let responseSell = await binance.futuresMarketSell( use_wallet , percentageCount) ;
+                                                    console.log('responseSell =>>>>>>>>>>', responseSell);
+                    
+                                                    let responseBuy  = await binance.futuresMarketBuy(buy_symbol, percentageCount)
+                                                    console.log('responseBuy =>>>>>>>>>>', responseBuy);
+                    
+                                                    db.collection('sell_test').insertOne(responseSell)
+                                                    db.collection('test_buy_else').insertOne(responseBuy)
+                                                }
+                                                
+                                                let newObjectSet = {
+
+                                                    purchased_price_buy_symbol  : "",
+                                                    status              :  'active',
+                                                    checkingStartCount  :  (checkingStartCount -1),
+                                                    startTime           :  endTime,
+                                                    created_date  : new Date()
+                                                }
+                                                if( (checkingStartCount - 1) <= 0 ){
+                                                    
+                                                    newObjectSet['expiredForChecking'] = true ;
+                                                }
+                                                let collectionName = 'order_binance';
+                                                helperCon.updateOrder(order_id,  newObjectSet, collectionName)
+                                            }else{
+                    
+                                                console.log('order behaviour is missing we cannot process this order for now sorry!!!!!!!!!')
+                                                return true;
+                                            }
+                                        }else{
+                                            
+                                            let newObjectSet = {
+                                                checkingStartCount  :  (checkingStartCount -1),
+                                                startTime           :  endTime,
+                                                created_date  : new Date()
+                                            }
+                                            if( (checkingStartCount - 1) <= 0 ){
+                                                
+                                                newObjectSet['expiredForChecking'] = true ;
+                                            }
+
+                                            let collectionName = 'order_binance';
+                                            helperCon.updateOrder(order_id,  newObjectSet, collectionName)
+                                        }
+                                        //update the order count make expire if count 0 and add how much time this rule get true
+                                    }else if(checking_symbol == 'usd'){
+
+                                        let priceDifference = await helperCon.getVolumeCheckingForusd(select_coin, created_Date, endTime, 'binance');
+                                        let convertIntoUSD  = '';
+                                        if(select_coin == 'BUSDUSDT'){
+
+                                            convertIntoUSD = priceDifference ;
+                                        }else{
+
+                                            let symbolPrice = await helperCon.getMarketPrice('BUSDUSDT' , 'market_prices_binance')
+                                            console.log('buy symbol Price ========>>>>>>>>>>>>>>>>>>>>>>>>>', symbolPrice.price);
+                                            convertIntoUSD = (symbolPrice.price > 0) ? ( (symbolPrice.price) *  priceDifference ) : 0 ;
+                                        }
+                                        console.log('convertIntoUSD =============>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>', convertIntoUSD);
+
+                                        if(convertIntoUSD < checking_value &&  convertIntoUSD != 0){
+
+                                            if(quantity_behaviour == 'coins'){
+
+                                                let userApiKeyDetails =  await helperCon.getUserApiKeyDetails(user_id, 'binance')
+                                                let apiKey     =   userApiKeyDetails[0]['apiKey']
+                                                let secretKey  =   userApiKeyDetails[0]['secretKey']
+                                                
+                                                console.log('api Key ==============>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>', userApiKeyDetails[0]['apiKey'])
+                                                console.log('secret Key ==============>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>', userApiKeyDetails[0]['secretKey'])
+
+                                                const binance = new Binance().options({
+                                                    APIKEY      :   apiKey,
+                                                    APISECRET   :   secretKey
+                                                });
+                            
+                                                if(use_wallet == 'BTCUSDT' || use_wallet == 'BUSDUSDT'){
+                                                    
+                                                    let response = await binance.futuresMarketBuy(buy_symbol, quantity)
+                                                    console.log('response if ===>>>>>>>>>>>>', response);
+                                                    db.collection('test_buy').insertOne(response)
+                                                }else{
+                                                    
+                                                    let responseSell = await binance.futuresMarketSell( use_wallet , quantity) ;
+                                                    console.log('responseSell =>>>>>>>>>>', responseSell);
+                    
+                                                    let responseBuy  = await binance.futuresMarketBuy(buy_symbol, quantity)
+                                                    console.log('responseBuy =>>>>>>>>>>', responseBuy);
+                    
+                                                    db.collection('sell_test').insertOne(responseSell)
+                                                    db.collection('test_buy_else').insertOne(responseBuy)
+                                                }
+                                                let newObjectSet = {
+                                                    purchased_price_buy_symbol  : "",
+                                                    status   :  'active'
+                                                }
+                                                let collectionName = 'order_binance';
+                                                helperCon.updateOrder(order_id,  newObjectSet, collectionName)
+                                            }else if(quantity_behaviour == 'usd'){
+                    
+                                                if(buy_symbol == 'BTCUSDT' || buy_symbol == 'BUSDUSDT'){
+                    
+                                                    let symbolPrice = await helperCon.getMarketPrice(buy_symbol, 'market_prices_binance')
+                                                    console.log('symbolPrice.price=====>>>>>>>>>>>>>>', symbolPrice.price);
+                                                    let quantityBuy = (symbolPrice.price) * quantity ;
+                                                    console.log('buy quantity find ======>>>>>>>>>>>>>>>>>>>>>>>>>', quantityBuy)
+                    
+                                                    let response = await binance.futuresMarketBuy(buy_symbol, quantityBuy)
+                                                    console.log('response ===>>>>>>>>>>>>', response);
+                                                    db.collection('test_buy').insertOne(response)
+                                                }else{
+                    
+                                                    let symbolPrice = await helperCon.getMarketPrice(buy_symbol, 'market_prices_binance')
+                                                    console.log('symbolPrice.price=====>>>>>>>>>>>>>>', symbolPrice.price);
+                                                    let quantitysell = (symbolPrice.price) * quantity;
+                                                    console.log('buy quantity find ======>>>>>>>>>>>>>>>>>>>>>>>>>', quantitysell)
+                    
+                    
+                                                    let responseSell = await binance.futuresMarketSell( buy_symbol , quantitysell) ;
+                                                    console.log('responseSell =>>>>>>>>>>', responseSell);
+                    
+                                                    let responseBuy  = await binance.futuresMarketBuy(buy_symbol, quantitysell)
+                                                    console.log('responseBuy =>>>>>>>>>>', responseBuy);
+                    
+                                                    db.collection('sell_test').insertOne(responseSell)
+                                                    db.collection('test_buy_else').insertOne(responseBuy)
+                                                }
+                                                
+                                                let newObjectSet = {
+                                                    purchased_price_buy_symbol  : "",
+                                                    status   :  'active'
+                                                }
+                                                let collectionName = 'order_binance';
+                                                helperCon.updateOrder(order_id,  newObjectSet, collectionName)
+                    
+                                            }else if(quantity_behaviour == 'percentage'){
+                                                
+                                                let percentageCount  =  await helperCon.getBalancePercentage(user_id, use_wallet, quantity);  
+                                                console.log('percentageCount====>>>>>>>>>>>>>>>>> ', percentageCount ) 
+                                               
+                                                if(buy_symbol == 'BTCUSDT' || buy_symbol == 'ETHBTC'){
+                    
+                                                    let response = await binance.futuresMarketBuy(buy_symbol, percentageCount)
+                                                    console.log('response ===>>>>>>>>>>>>', response);
+                                                    db.collection('test_buy').insertOne(response)
+                                                }else{
+                                                    
+                                                    let responseSell = await binance.futuresMarketSell( use_wallet , percentageCount) ;
+                                                    console.log('responseSell =>>>>>>>>>>', responseSell);
+                    
+                                                    let responseBuy  = await binance.futuresMarketBuy(buy_symbol, percentageCount)
+                                                    console.log('responseBuy =>>>>>>>>>>', responseBuy);
+                    
+                                                    db.collection('sell_test').insertOne(responseSell)
+                                                    db.collection('test_buy_else').insertOne(responseBuy)
+                                                }
+                                                
+                                                let newObjectSet = {
+                                                    purchased_price_buy_symbol  : "",
+                                                    status   :  'active'
+                                                }
+                                                let collectionName = 'order_binance';
+                                                helperCon.updateOrder(order_id,  newObjectSet, collectionName)
+                                            }else{
+                    
+                                                console.log('order behaviour is missing we cannot process this order for now sorry!!!!!!!!!')
+                                                return true;
+                                            }
+                                            console.log('buy the order ');
+                                        }else{
+
+                                            let newObjectSet = {
+
+                                                checkingStartCount  :  (checkingStartCount -1)
+                                            }
+                                            if( (checkingStartCount - 1) <= 0 ){
+                                                
+                                                newObjectSet['expiredForChecking'] = true ;
+                                            }
+
+                                            let collectionName = 'order_binance';
+                                            helperCon.updateOrder(order_id,  newObjectSet, collectionName)
+                                        }
+                                        //update the order count make expire if count 0 and add how much time this rule get true
+                                    }else {  //for BTC
+                                        let priceDifference = helperCon.getVolumeCheckingForusd(select_coin, created_Date, endTime, exchange);
+                                        if(priceDifference != 0){
+
+                                            let convertIntoBTC  = '';
+                                            if(select_coin == 'BTCUSDT'){
+
+                                                convertIntoBTC = priceDifference ;
+                                            }else{
+
+                                                let symbolPrice = await helperCon.getMarketPrice(select_coin , 'market_prices_binance')
+                                                console.log('buy symbol Price ========>>>>>>>>>>>>>>>>>>>>>>>>>', symbolPrice.price);
+
+                                                convertIntoBTC =  ( symbolPrice.price ) * priceDifference ;
+                                            }
+
+                                            if(convertIntoBTC < checking_value && convertIntoBTC != 0 ){
+
+                                                if(quantity_behaviour == 'coins'){
+
+                                                    let userApiKeyDetails =  await helperCon.getUserApiKeyDetails(user_id, 'binance')
+                                                    let apiKey     =   userApiKeyDetails[0]['apiKey']
+                                                    let secretKey  =   userApiKeyDetails[0]['secretKey']
+                                                    
+                                                    console.log('api Key ==============>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>', userApiKeyDetails[0]['apiKey'])
+                                                    console.log('secret Key ==============>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>', userApiKeyDetails[0]['secretKey'])
+    
+                                                    const binance = new Binance().options({
+                                                        APIKEY      :   apiKey,
+                                                        APISECRET   :   secretKey
+                                                    });
+                                
+                                                    if(use_wallet == 'BTCUSDT' || use_wallet == 'BUSDUSDT'){
+                                                        
+                                                        let response = await binance.futuresMarketBuy(buy_symbol, quantity)
+                                                        console.log('response if ===>>>>>>>>>>>>', response);
+                                                        db.collection('test_buy').insertOne(response)
+                                                    }else{
+                                                        
+                                                        let responseSell = await binance.futuresMarketSell( use_wallet , quantity) ;
+                                                        console.log('responseSell =>>>>>>>>>>', responseSell);
+                        
+                                                        let responseBuy  = await binance.futuresMarketBuy(buy_symbol, quantity)
+                                                        console.log('responseBuy =>>>>>>>>>>', responseBuy);
+                        
+                                                        db.collection('sell_test').insertOne(responseSell)
+                                                        db.collection('test_buy_else').insertOne(responseBuy)
+                                                    }
+                                                    let newObjectSet = {
+                                                        purchased_price_buy_symbol  : "",
+                                                        status   :  'active'
+                                                    }
+                                                    let collectionName = 'order_binance';
+                                                    helperCon.updateOrder(order_id,  newObjectSet, collectionName)
+                                                }else if(quantity_behaviour == 'usd'){
+                        
+                                                    if(buy_symbol == 'BTCUSDT' || buy_symbol == 'BUSDUSDT'){
+                        
+                                                        let symbolPrice = await helperCon.getMarketPrice(buy_symbol, 'market_prices_binance')
+                                                        console.log('symbolPrice.price=====>>>>>>>>>>>>>>', symbolPrice.price);
+                                                        let quantityBuy = (symbolPrice.price) * quantity ;
+                                                        console.log('buy quantity find ======>>>>>>>>>>>>>>>>>>>>>>>>>', quantityBuy)
+                        
+                                                        let response = await binance.futuresMarketBuy(buy_symbol, quantityBuy)
+                                                        console.log('response ===>>>>>>>>>>>>', response);
+                                                        db.collection('test_buy').insertOne(response)
+                                                    }else{
+                        
+                                                        let symbolPrice = await helperCon.getMarketPrice(buy_symbol, 'market_prices_binance')
+                                                        console.log('symbolPrice.price=====>>>>>>>>>>>>>>', symbolPrice.price);
+                                                        let quantitysell = (symbolPrice.price) * quantity;
+                                                        console.log('buy quantity find ======>>>>>>>>>>>>>>>>>>>>>>>>>', quantitysell)
+                        
+                        
+                                                        let responseSell = await binance.futuresMarketSell( buy_symbol , quantitysell) ;
+                                                        console.log('responseSell =>>>>>>>>>>', responseSell);
+                        
+                                                        let responseBuy  = await binance.futuresMarketBuy(buy_symbol, quantitysell)
+                                                        console.log('responseBuy =>>>>>>>>>>', responseBuy);
+                        
+                                                        db.collection('sell_test').insertOne(responseSell)
+                                                        db.collection('test_buy_else').insertOne(responseBuy)
+                                                    }
+                                                    
+                                                    let newObjectSet = {
+                                                        purchased_price_buy_symbol  : "",
+                                                        status   :  'active'
+                                                    }
+                                                    let collectionName = 'order_binance';
+                                                    helperCon.updateOrder(order_id,  newObjectSet, collectionName)
+                        
+                                                }else if(quantity_behaviour == 'percentage'){
+                                                    
+                                                    let percentageCount  =  await helperCon.getBalancePercentage(user_id, use_wallet, quantity);  
+                                                    console.log('percentageCount====>>>>>>>>>>>>>>>>> ', percentageCount ) 
+                                                   
+                                                    if(buy_symbol == 'BTCUSDT' || buy_symbol == 'ETHBTC'){
+                        
+                                                        let response = await binance.futuresMarketBuy(buy_symbol, percentageCount)
+                                                        console.log('response ===>>>>>>>>>>>>', response);
+                                                        db.collection('test_buy').insertOne(response)
+                                                    }else{
+                                                        
+                                                        let responseSell = await binance.futuresMarketSell( use_wallet , percentageCount) ;
+                                                        console.log('responseSell =>>>>>>>>>>', responseSell);
+                        
+                                                        let responseBuy  = await binance.futuresMarketBuy(buy_symbol, percentageCount)
+                                                        console.log('responseBuy =>>>>>>>>>>', responseBuy);
+                        
+                                                        db.collection('sell_test').insertOne(responseSell)
+                                                        db.collection('test_buy_else').insertOne(responseBuy)
+                                                    }
+                                                    
+                                                    let newObjectSet = {
+                                                        purchased_price_buy_symbol  : "",
+                                                        status   :  'completed'
+                                                    }
+                                                    let collectionName = 'order_binance';
+                                                    helperCon.updateOrder(order_id,  newObjectSet, collectionName)
+                                                }else{
+                        
+                                                    console.log('order behaviour is missing we cannot process this order for now sorry!!!!!!!!!')
+                                                    return true;
+                                                }
+                                            }else{
+                                                let newObjectSet = {
+
+                                                    checkingStartCount  :  (checkingStartCount -1)
+                                                }
+                                                if( (checkingStartCount - 1) <= 0 ){
+                                                    
+                                                    newObjectSet['expiredForChecking'] = true ;
+                                                }
+
+                                                let collectionName = 'order_binance';
+                                                helperCon.updateOrder(order_id,  newObjectSet, collectionName)
+                                            }
+                                        }else{
+
+                                            console.log('<<<<<<<<<<<<<<<=============   priceDifference is zero    ============>>>>>>>>>>>>>>>>>>>>')
+                                        }
+                                        //update the order count make expire if count 0 and add how much time this rule get true
+                                        return true;
+                                    }
+
+                                }else if(has_checking == 'greater'){
+                                    if(checking_symbol == 'percentage'){
+                                        let volume = await helperCon.getVolumeCheckingForPercentage(select_coin, created_Date, endTime, exchange);
+                                        console.log('volume=============>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>', volume);
+                                        if(volume > checking_value){
+
+                                            if(quantity_behaviour == 'coins'){
+                                                if(use_wallet == 'BTCUSDT' || use_wallet == 'BUSDUSDT'){
+                                                    
+                                                    let response = await binance.futuresMarketBuy(buy_symbol, quantity)
+                                                    console.log('response if ===>>>>>>>>>>>>', response);
+                                                    db.collection('test_buy').insertOne(response)
+                                                }else{
+                                                    
+                                                    let responseSell = await binance.futuresMarketSell( use_wallet , quantity) ;
+                                                    console.log('responseSell =>>>>>>>>>>', responseSell);
+                    
+                                                    let responseBuy  = await binance.futuresMarketBuy(buy_symbol, quantity)
+                                                    console.log('responseBuy =>>>>>>>>>>', responseBuy);
+                    
+                                                    db.collection('sell_test').insertOne(responseSell)
+                                                    db.collection('test_buy_else').insertOne(responseBuy)
+                                                }
+                                                let newObjectSet = {
+                                                    purchased_price_buy_symbol  : "",
+                                                    status   :  'active'
+                                                }
+                                                let collectionName = 'order_binance';
+                                                helperCon.updateOrder(order_id,  newObjectSet, collectionName)
+                                            }else if(quantity_behaviour == 'usd'){
+                    
+                                                if(buy_symbol == 'BTCUSDT' || buy_symbol == 'BUSDUSDT'){
+                    
+                                                    let symbolPrice = await helperCon.getMarketPrice(buy_symbol, 'market_prices_binance')
+                                                    console.log('symbolPrice.price=====>>>>>>>>>>>>>>', symbolPrice.price);
+                                                    let quantityBuy = (symbolPrice.price) * quantity ;
+                                                    console.log('buy quantity find ======>>>>>>>>>>>>>>>>>>>>>>>>>', quantityBuy)
+                    
+                                                    let response = await binance.futuresMarketBuy(buy_symbol, quantityBuy)
+                                                    console.log('response ===>>>>>>>>>>>>', response);
+                                                    db.collection('test_buy').insertOne(response)
+                                                }else{
+                    
+                                                    let symbolPrice = await helperCon.getMarketPrice(buy_symbol, 'market_prices_binance')
+                                                    console.log('symbolPrice.price=====>>>>>>>>>>>>>>', symbolPrice.price);
+                                                    let quantitysell = (symbolPrice.price) * quantity;
+                                                    console.log('buy quantity find ======>>>>>>>>>>>>>>>>>>>>>>>>>', quantitysell)
+                    
+                    
+                                                    let responseSell = await binance.futuresMarketSell( buy_symbol , quantitysell) ;
+                                                    console.log('responseSell =>>>>>>>>>>', responseSell);
+                    
+                                                    let responseBuy  = await binance.futuresMarketBuy(buy_symbol, quantitysell)
+                                                    console.log('responseBuy =>>>>>>>>>>', responseBuy);
+                    
+                                                    db.collection('sell_test').insertOne(responseSell)
+                                                    db.collection('test_buy_else').insertOne(responseBuy)
+                                                }
+                                                
+                                                let newObjectSet = {
+                                                    purchased_price_buy_symbol  : "",
+                                                    status   :  'active'
+                                                }
+                                                let collectionName = 'order_binance';
+                                                helperCon.updateOrder(order_id,  newObjectSet, collectionName)
+                    
+                                            }else if(quantity_behaviour == 'percentage'){
+                                                
+                                                let percentageCount  =  await helperCon.getBalancePercentage(user_id, use_wallet, quantity);  
+                                                console.log('percentageCount====>>>>>>>>>>>>>>>>> ', percentageCount ) 
+                                               
+                                                if(buy_symbol == 'BTCUSDT' || buy_symbol == 'ETHBTC'){
+                    
+                                                    let response = await binance.futuresMarketBuy(buy_symbol, percentageCount)
+                                                    console.log('response ===>>>>>>>>>>>>', response);
+                                                    db.collection('test_buy').insertOne(response)
+                                                }else{
+                                                    
+                                                    let responseSell = await binance.futuresMarketSell( use_wallet , percentageCount) ;
+                                                    console.log('responseSell =>>>>>>>>>>', responseSell);
+                    
+                                                    let responseBuy  = await binance.futuresMarketBuy(buy_symbol, percentageCount)
+                                                    console.log('responseBuy =>>>>>>>>>>', responseBuy);
+                    
+                                                    db.collection('sell_test').insertOne(responseSell)
+                                                    db.collection('test_buy_else').insertOne(responseBuy)
+                                                }
+                                                
+                                                let newObjectSet = {
+                                                    purchased_price_buy_symbol  : "",
+                                                    status   :  'completed'
+                                                }
+                                                let collectionName = 'order_binance';
+                                                helperCon.updateOrder(order_id,  newObjectSet, collectionName)
+                                            }else{
+                    
+                                                console.log('order behaviour is missing we cannot process this order for now sorry!!!!!!!!!')
+                                                return true;
+                                            }
+                                        }else{
+
+                                            console.log('not true !!!!!!!!!!')
+                                        }
+                                        //update the order count make expire if count 0 and add how much time this rule get true
+                                    }else if(checking_symbol == 'usd'){
+                                        //coin should be USDT pairs
+                                        let priceDifference = helperCon.getVolumeCheckingForusd(select_coin, created_Date, endTime, 'binance');
+
+                                        let convertIntoUSD  = '';
+                                        if(select_coin == 'BUSDUSDT'){   //BUSDUSDT mean dollar price
+
+                                            convertIntoUSD = priceDifference ;
+                                        }else{
+
+                                            let symbolPrice = await helperCon.getMarketPrice('BUSDUSDT' , 'market_prices_binance')
+                                            console.log('buy symbol Price ========>>>>>>>>>>>>>>>>>>>>>>>>>', symbolPrice.price);
+                                            convertIntoUSD = (symbolPrice.price > 0) ? ( (symbolPrice.price) *  priceDifference ) : 0 ;
+                                        }
+                                        console.log('convertIntoUSD =============>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>', convertIntoUSD);
+
+                                        if(convertIntoUSD > checking_value){
+
+                                            console.log('buy the order')
+                                            return true ;
+                                        }else{
+
+                                            console.log('usd Price not true')
+                                        }
+                                        //update the order count make expire if count 0 and add how much time this rule get true
+                                    }else {  //for BTC
+                                        //coin pair should be BTC
+                                        let priceDifference = helperCon.getVolumeCheckingForusd(select_coin, created_Date, endTime, exchange);
+                                        if(priceDifference != 0){
+                                            let convertIntoBTC  = '';
+                                            if(select_coin == 'BTCUSDT'){
+
+                                                convertIntoBTC = priceDifference ;
+                                            }else{
+
+                                                let symbolPrice = await helperCon.getMarketPrice('BTCUSDT' , 'market_prices_binance')
+                                                console.log('buy symbol Price ========>>>>>>>>>>>>>>>>>>>>>>>>>', symbolPrice.price);
+                                                convertIntoBTC =  ( symbolPrice.price ) * priceDifference ;
+                                            }
+                                            if(convertIntoBTC > checking_value){
+
+                                                console.log('buy the coin')
+                                                return true ;
+                                            }else{
+
+                                                console.log('BTC Price not True else')
+                                            }
+                                        }else{
+
+                                            console.log('<<<<<<<<<<<<<<<=============   priceDifference is zero    ============>>>>>>>>>>>>>>>>>>>>')
+                                        }
+                                        //update the order count make expire if count 0 and add how much time this rule get true
+                                        return true;
+                                    }
+                                }
+
+                            }
+                            //end===================================================================================
+                            
+                           
                         }else{//end time check
                         
                             console.log('<<<<<<<<<<<<<<<<<<================  time type not valid  ===========>>>>>>>>>>>>>>>>>')
