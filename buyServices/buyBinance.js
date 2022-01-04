@@ -70,7 +70,7 @@ module.exports = {
                                     }
                                     await helperCon.updateOrder(order_id,  newObjectSet, 'order_binance')
                                     await helperCon.saveOrderLog(order_id, 'order_logs_binance', 'order buy failed due to some issue' )//insert the ordeer log  
-                                    // console.log('error ======>>>>>>>>>>>', error)
+                                    console.log('error ======>>>>>>>>>>>', error.body)
                                 }
                             }else{
                                 if( buy_symbol == 'BTCUSDT' || buy_symbol == 'BUSDUSDT'){
@@ -97,8 +97,8 @@ module.exports = {
                                             status      :   'ERROR',
                                         }
                                         await helperCon.updateOrder(order_id,  newObjectSet, 'order_binance')
-                                        console.log('error-----------------------------------------------------------------------')
-                                        // console.log(error)
+                                        // console.log('error-----------------------------------------------------------------------')
+                                        console.log(error.body)
                                     }
                                 } else {
                                     try{
@@ -122,8 +122,8 @@ module.exports = {
                                                 status      :   'ERROR',
                                             }
                                             await helperCon.updateOrder(order_id,  newObjectSet, 'order_binance')
-                                            // console.log('inner error =========>>>>>>>>>>>>>>>>>>>>>>>>', error)
-                                            console.log('error-----------------------------------------------------------------------')
+                                            console.log('inner error =========>>>>>>>>>>>>>>>>>>>>>>>>', error.body)
+                                            // console.log('error-----------------------------------------------------------------------')
                                         }
                                     }catch(error){
 
@@ -132,8 +132,8 @@ module.exports = {
                                             status      :   'ERROR',
                                         }
                                         await helperCon.updateOrder(order_id,  newObjectSet, 'order_binance')
-                                        // console.log('error outer ======>>>>>>>>>>>>>>>>>>>>>>>>>>', error)
-                                        console.log('error-----------------------------------------------------------------------')
+                                        console.log('error outer ======>>>>>>>>>>>>>>>>>>>>>>>>>>', error.body)
+                                        // console.log('error-----------------------------------------------------------------------')
                                     }      
                                 }
                             }
@@ -165,7 +165,7 @@ module.exports = {
                                         status      :   'ERROR',
                                     }
                                     await helperCon.updateOrder(order_id,  newObjectSet, 'order_binance')
-                                    console.log(error)
+                                    console.log(error.body)
                                     // console.log('error-----------------------------------------------------------------------')
                                 }
                             }else{
@@ -193,8 +193,8 @@ module.exports = {
                                             status      :   'ERROR',
                                         }
                                         await helperCon.updateOrder(order_id,  newObjectSet, 'order_binance')
-                                        // console.log(error)
-                                        console.log('error-----------------------------------------------------------------------')
+                                        console.log(error.body)
+                                        // console.log('error-----------------------------------------------------------------------')
                                     }
                                 }else{
                                     try{
@@ -218,8 +218,8 @@ module.exports = {
                                                 status      :   'ERROR',
                                             }
                                             await helperCon.updateOrder(order_id,  newObjectSet, 'order_binance')
-                                            // console.log('inner error =========>>>>>>>>>>>>>>>>>>>>>>>>', error)
-                                            console.log('error-----------------------------------------------------------------------')
+                                            console.log('inner error =========>>>>>>>>>>>>>>>>>>>>>>>>', error.body)
+                                            // console.log('error-----------------------------------------------------------------------')
                                         }
                                     }catch(error){
 
@@ -228,8 +228,8 @@ module.exports = {
                                             status      :   'ERROR',
                                         }
                                         await helperCon.updateOrder(order_id,  newObjectSet, 'order_binance')
-                                        // console.log('error outer ======>>>>>>>>>>>>>>>>>>>>>>>>>>', error)
-                                        console.log('error-----------------------------------------------------------------------')
+                                        console.log('error outer ======>>>>>>>>>>>>>>>>>>>>>>>>>>', error.body)
+                                        // console.log('error-----------------------------------------------------------------------')
                                     }     
                                 }//end else
                             }
@@ -258,8 +258,8 @@ module.exports = {
                                         status      :   'ERROR',
                                     }
                                     await helperCon.updateOrder(order_id,  newObjectSet, 'order_binance')
-                                    // console.log(error)
-                                    console.log('error-----------------------------------------------------------------------')
+                                    console.log(error.body)
+                                    // console.log('error-----------------------------------------------------------------------')
                                 }
                             }else{
                                 
@@ -282,8 +282,8 @@ module.exports = {
                                             status      :   'ERROR',
                                         }
                                         await helperCon.updateOrder(order_id,  newObjectSet, 'order_binance')
-                                        // console.log(error)
-                                        console.log('error-----------------------------------------------------------------------')
+                                        console.log(error.body)
+                                        // console.log('error-----------------------------------------------------------------------')
                                     }
                                 }else{
                                     try{
@@ -307,8 +307,8 @@ module.exports = {
                                                 status      :   'ERROR',
                                             }
                                             await helperCon.updateOrder(order_id,  newObjectSet, 'order_binance')
-                                            // console.log(error)
-                                            console.log('error-----------------------------------------------------------------------')
+                                            console.log(error.body)
+                                            // console.log('error-----------------------------------------------------------------------')
                                         }
                                     }catch(error){
                                         await helperCon.saveOrderLog(order_id, 'order_logs_binance', 'order buy failed due to some issue' )//insert the ordeer log   
@@ -316,8 +316,8 @@ module.exports = {
                                             status      :   'ERROR',
                                         }
                                         await helperCon.updateOrder(order_id,  newObjectSet, 'order_binance')
-                                        // console.log(error)
-                                        console.log('error-----------------------------------------------------------------------')
+                                        console.log(error.body)
+                                        // console.log('error-----------------------------------------------------------------------')
                                     }
                                 }
                             }
