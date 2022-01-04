@@ -129,7 +129,7 @@ module.exports = {
                 if(symbolEnd == 'BTC'){
 
                 }else{
-
+                    // var symbolEnd  = buy_symbol.substr(buy_symbol.length - 4); 
                 }
                 let calculatePercenatge = [
                     {
@@ -359,7 +359,6 @@ module.exports = {
                     
                     symbolNew = symbol.split("USDT");
                 }
-
                 let SearchObject = {
                     symbol          :   symbolNew,
                     created_date    :   {'$lte' : startTime } 
@@ -388,7 +387,6 @@ module.exports = {
 
                 let exchangeDetails = await db.collection('exchanges').find({user_id : user_id.toString(),  exchange : "binance"}).toArray()
 
-
                 let lookup = [
                     {
                         '$group' : {
@@ -410,7 +408,7 @@ module.exports = {
 
                             db.collection('exchanges').updateOne({ user_id : exchangeDetails[0]['user_id']}, {'$set' : { updated_time : new Date()}})
                             console.log('error')
-                            return true;
+                            resolve(false);
                         }else{
                             for( let coinIteration = 0 ; coinIteration < coins.length ;  coinIteration++ ){
                                 let coinName = coins[coinIteration]['coin_name'];
@@ -423,6 +421,8 @@ module.exports = {
                                 db.collection('balance_binance').updateOne({symbol : coins[coinIteration]['_id'], user_id :  exchangeDetails[0]['user_id']}, {'$set' : insertBalance}, {upsert:true})
                             }//end loop
                             db.collection('exchanges').updateOne({ user_id : exchangeDetails[0]['user_id']}, {'$set' : { updated_time : new Date()}})
+                            console.log('<<<<<<<<<<<<<<<<<<<<<<<<<<<<<============ Blance call is running ===========>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+                            resolve(true)
                         }//end else
                     });
                 }
@@ -430,4 +430,46 @@ module.exports = {
         })
     },//end balance 
 
+
+    buyBinaneCall : (symbol, quantity, apiKey, secretKey) => {
+        return new Promise(async(resolve) => {
+        
+            const binance = new Binance().options({
+                APIKEY      :   apiKey,
+                APISECRET   :   secretKey
+            });
+            let response = await binance.marketBuy(symbol, quantity)
+            resolve(response)
+        })
+    },
+   
+
+    selBinanceCall : (symbol, quantity, apiKey, secretKey) => {
+        return new Promise(async(resolve) => {
+            const binance = new Binance().options({
+                APIKEY      :   apiKey,
+                APISECRET   :   secretKey
+            });
+            let response = await binance.marketSell(symbol, quantity)
+            resolve(response)
+
+        })
+    },
+
+
+    saveOrderLog : (order_id, collection_name, message) => {
+        return new Promise(resolve => {
+            conn.then(async(db) => {
+
+                let insertObject = {
+
+                    order_id        :   order_id,
+                    created_date    :   new Date(),
+                    message         :   message
+                }
+                db.collection(collection_name).insertOne(insertObject);
+                resolve(true)
+            })
+        })
+    }
 }

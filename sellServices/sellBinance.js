@@ -1,4 +1,3 @@
-
 const Binance = require('node-binance-api');
 const conn = require('../DataBase/connection');
 var helperCon = require("../helpers/helper");
@@ -17,14 +16,8 @@ module.exports = {
                 console.log('sell order length ==============================>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>', sellOrder.length);
                 if(sellOrder.length > 0){
                     for(let orderIndex = 0 ; orderIndex < sellOrder.length ;  orderIndex++){
-
-                        console.log('sell order id is : ====>>>>>>>>>>> ', sellOrder[orderIndex]['_id'] )
-                        console.log('sell order buy symbol : ====>>>>>>>>>>> ', sellOrder[orderIndex]['buy_symbol'] )
-                        console.log('sell order use wallet Symbol : ====>>>>>>>>>>> ', sellOrder[orderIndex]['use_wallet'] )
-                        console.log('sell order quantity : ====>>>>>>>>>>> ',sellOrder[orderIndex]['quantity'] )
-                        console.log('sell order behaviour : ====>>>>>>>>>>> ',sellOrder[orderIndex]['quantity_behaviour'] );
-                        console.log('user id : ====>>>>>>>>>>> ',sellOrder[orderIndex]['user_id'] );
                         
+                        helperCon.saveOrderLog(order_id, 'order_logs_binance', 'order send for sell' )//insert the ordeer log  
                         let quantity   =   parseFloat(sellOrder[orderIndex]['quantity']);
                         let order_id   =   sellOrder[orderIndex]['_id'].toString();
                         let user_id    =   sellOrder[orderIndex]['user_id'];
@@ -44,93 +37,257 @@ module.exports = {
                         });
 
                         if(sellOrder[orderIndex]['quantity_behaviour'] == 'coins'){
+                            if(use_wallet == 'BTCUSDT' || use_wallet == 'BUSDUSDT'){
+                                try{
+                                    let response = await binance.marketBuy(buy_symbol, quantity)
+                                    
+                                    let newObjectSet = {
+                                        purchased_price_buy_symbol  :   parseFloat(response.price),
+                                        status                      :   response.status,
+                                        order_type                  :   response.type,
+                                        executedQty                 :   parseFloat(response.executedQty),
+                                        binance_order_id            :   response.orderId,
+                                        order_filled_time           :   new Date()
+                                    }
+                                    helperCon.saveOrderLog(order_id, 'order_logs_binance', 'order successfully buy' )//insert the ordeer log  
+                                    helperCon.updateOrder(order_id,  newObjectSet, 'order_binance')
+                                }catch(error){
 
-                            if(buy_symbol == 'BTCUSDT' || buy_symbol == 'BUSDUSDT'){
-
-                                let response = await binance.futuresMarketBuy(use_wallet, quantity)
-                                console.log('response if ===>>>>>>>>>>>>', response);
-                                db.collection('test_buy').insertOne(response)
+                                    helperCon.saveOrderLog(order_id, 'order_logs_binance', 'order buy failed due to some issue' )//insert the ordeer log  
+                                    let newObjectSet = {
+                                        status                      :   'ERROR',
+                                    }
+                                    helperCon.updateOrder(order_id,  newObjectSet, 'order_binance')
+                                    console.log(error)
+                                }
                             }else{
+                                if(buy_symbol == 'BTCUSDT' || buy_symbol == 'BUSDUSDT' ){
+                                    try{
+                                       let response = await binance.marketSell(use_wallet, quantity)
+                                       let symbolPrice = await helperCon.getMarketPrice(buy_symbol, 'market_prices_binance')
+                                       console.log('symbolPrice.price=====>>>>>>>>>>>>>>', symbolPrice.price);
 
-                                let responseSell = await binance.futuresMarketSell( use_wallet , quantity) ;
-                                console.log('responseSell =>>>>>>>>>>', responseSell);
+                                        let newObjectSet = {
+                                            purchased_price_buy_symbol  :   symbolPrice.price,
+                                            status                      :   'FILLED',
+                                            order_type                  :   'MARKET',
+                                            executedQty                 :   quantity,
+                                            binance_order_id            :   '',
+                                            order_filled_time           :   new Date()
+                                        }
+                                        helperCon.saveOrderLog(order_id, 'order_logs_binance', 'order successfully buy' )//insert the ordeer log  
+                                        helperCon.updateOrder(order_id,  newObjectSet, 'order_binance')
+                                    }catch(error){
 
-                                let responseBuy  = await binance.futuresMarketBuy(buy_symbol, quantity)
-                                console.log('responseBuy =>>>>>>>>>>', responseBuy);
-
-                                db.collection('sell_test').insertOne(responseSell)
-                                db.collection('test_buy_else').insertOne(responseBuy)
+                                        helperCon.saveOrderLog(order_id, 'order_logs_binance', 'order buy failed due to some issue' )//insert the ordeer log  
+                                        let newObjectSet = {
+                                            status                      :   'ERROR',
+                                        }
+                                        helperCon.updateOrder(order_id,  newObjectSet, 'order_binance')
+                                        console.log('error ======>>>>>>>>>>>', error)
+                                    }
+                                }else{
+                                   
+                                    try{
+                                        let sellBinance = await binance.marketSell(use_wallet , quantity);
+                                        try{
+                                            let response = await binance.marketBuy(buy_symbol, quantity)
+                                            let newObjectSet = {
+                                                purchased_price_buy_symbol  :   parseFloat(response.price),
+                                                status                      :   response.status,
+                                                order_type                  :   response.type,
+                                                executedQty                 :   parseFloat(response.executedQty),
+                                                binance_order_id            :   response.orderId,
+                                                order_filled_time           :   new Date()
+                                            }
+                                            helperCon.saveOrderLog(order_id, 'order_logs_binance', 'order successfully buy' )//insert the ordeer log  
+                                            helperCon.updateOrder(order_id,  newObjectSet, 'order_binance')
+                                        }catch(error){
+    
+                                            helperCon.saveOrderLog(order_id, 'order_logs_binance', 'order buy failed due to some issue' )//insert the ordeer log  
+                                            let newObjectSet = {
+                                                status                      :   'ERROR',
+                                            }
+                                            helperCon.updateOrder(order_id,  newObjectSet, 'order_binance')
+                                            console.log('inner error =========>>>>>>>>>>>>>>>>>>>>>>>>', error)
+                                        }
+                                    }catch(error){
+                                        helperCon.saveOrderLog(order_id, 'order_logs_binance', 'order buy failed due to some issue' )//insert the ordeer log  
+                                        let newObjectSet = {
+                                            status                      :   'ERROR',
+                                        }
+                                        helperCon.updateOrder(order_id,  newObjectSet, 'order_binance')
+                                        console.log('error outer ======>>>>>>>>>>>>>>>>>>>>>>>>>>', error)
+                                    }      
+                                }
                             }
-                            
-                            let newObjectSet = {
-                                purchased_price_buy_symbol  : "",
-                                status   :  'completed'
-                            }
-                            let collectionName = 'order_binance';
-                            helperCon.updateOrder(order_id,  newObjectSet, collectionName)
+                            helperCon.balanceUpdate(user_id);
                         }else if(sellOrder[orderIndex]['quantity_behaviour'] == 'usd'){
-
-                            if(buy_symbol == 'BTCUSDT' || buy_symbol == 'BUSDUSDT'){
-
-                                let symbolPrice = await helper.getMarketPrice(use_wallet, 'market_prices_binance')
-                                console.log('symbolPrice.price=====>>>>>>>>>>>>>>', symbolPrice.price);
-                                let quantityBuy = symbolPrice.price * quantity ;
-
-                                // let response = await binance.futuresMarketBuy(use_wallet, quantityBuy)
-                                // console.log('response ===>>>>>>>>>>>>', response);
-                                // db.collection('test_buy').insertOne(response)
-                            }else{
-
-                                let symbolPrice = await helper.getMarketPrice(use_wallet, 'market_prices_binance')
-                                console.log('symbolPrice.price=====>>>>>>>>>>>>>>', symbolPrice.price);
-                                let quantitysell = symbolPrice.price * quantity;
-
-                                // let responseSell = await binance.futuresMarketSell( use_wallet , quantitysell) ;
-                                // console.log('responseSell =>>>>>>>>>>', responseSell);
-
-                                // let responseBuy  = await binance.futuresMarketBuy(buy_symbol, quantitysell)
-                                // console.log('responseBuy =>>>>>>>>>>', responseBuy);
-
-                                // db.collection('sell_test').insertOne(responseSell)
-                                // db.collection('test_buy_else').insertOne(responseBuy)
-                            }
                             
-                            let newObjectSet = {
-                                purchased_price_buy_symbol  : "",
-                                status   :  'completed'
-                            }
-                            let collectionName = 'order_binance';
-                            helperCon.updateOrder(order_id,  newObjectSet, collectionName)
+                            let symbolPrice = await helper.getMarketPrice(use_wallet, 'market_prices_binance')
+                            console.log('symbolPrice.price=====>>>>>>>>>>>>>>', symbolPrice.price);
+                            let quantityBuy = symbolPrice.price * quantity ;
+                            
+                            if(use_wallet == 'BTCUSDT' || use_wallet == 'BUSDUSDT'){
+                                try{
+                                    let response = await binance.marketBuy(buy_symbol, quantityBuy)
+                                   
+                                    let newObjectSet = {
+                                        purchased_price_buy_symbol  :   parseFloat(response.price),
+                                        status                      :   response.status,
+                                        order_type                  :   response.type,
+                                        executedQty                 :   parseFloat(response.executedQty),
+                                        binance_order_id            :   response.orderId,
+                                        order_filled_time           :   new Date()
+                                    }
+                                    helperCon.saveOrderLog(order_id, 'order_logs_binance', 'order successfully buy' )//insert the ordeer log  
+                                    helperCon.updateOrder(order_id,  newObjectSet, 'order_binance')
+                                }catch(error){
 
+                                    helperCon.saveOrderLog(order_id, 'order_logs_binance', 'order buy failed due to some issue' )//insert the ordeer log  
+                                    let newObjectSet = {
+                                        status                      :   'ERROR',
+                                    }
+                                    helperCon.updateOrder(order_id,  newObjectSet, 'order_binance')
+                                    console.log(error);
+                                }
+                            }else{
+                                if(buy_symbol == 'BTCUSDT' || buy_symbol == 'BUSDUSDT'){
+                                    try {
+                                        let response = await binance.marketSell(use_wallet, quantityBuy)
+                                        let symbolPrice = await helper.getMarketPrice(buy_symbol, 'market_prices_binance')
+
+                                        let newObjectSet = {
+                                            purchased_price_buy_symbol  :   symbolPrice.price,
+                                            status                      :   'FILLED',
+                                            order_type                  :   'MARKET',
+                                            executedQty                 :   quantityBuy,
+                                            binance_order_id            :   '',
+                                            order_filled_time           :   new Date()
+                                        }
+                                        helperCon.saveOrderLog(order_id, 'order_logs_binance', 'order successfully buy' )//insert the ordeer log  
+                                        helperCon.updateOrder(order_id,  newObjectSet, 'order_binance')
+                                    }catch(error) {
+
+                                        helperCon.saveOrderLog(order_id, 'order_logs_binance', 'order buy failed due to some issue' )//insert the ordeer log  
+                                        let newObjectSet = {
+                                            status                      :   'ERROR',
+                                        }
+                                        helperCon.updateOrder(order_id,  newObjectSet, 'order_binance')
+                                        console.log(error)
+                                    }
+                                }else{
+                                    try{
+                                        let response = await binance.marketSell(use_wallet, quantityBuy)
+                                        try{
+                                            let response = await binance.marketBuy(buy_symbol, quantityBuy)
+                                            let newObjectSet = {
+                                                purchased_price_buy_symbol  :   parseFloat(response.price),
+                                                status                      :   response.status,
+                                                order_type                  :   response.type,
+                                                executedQty                 :   parseFloat(response.executedQty),
+                                                binance_order_id            :   response.orderId,
+                                                order_filled_time           :   new Date()
+                                            }
+                                            helperCon.saveOrderLog(order_id, 'order_logs_binance', 'order successfully buy' )//insert the ordeer log  
+                                            helperCon.updateOrder(order_id,  newObjectSet, 'order_binance')
+                                        }catch(error){
+
+                                            helperCon.saveOrderLog(order_id, 'order_logs_binance', 'order buy failed due to some issue' )//insert the ordeer log  
+                                            let newObjectSet = {
+                                                status                      :   'ERROR',
+                                            }
+                                            helperCon.updateOrder(order_id,  newObjectSet, 'order_binance')
+                                            console.log(error)
+                                        }
+                                    }catch(error){
+
+                                        helperCon.saveOrderLog(order_id, 'order_logs_binance', 'order buy failed due to some issue' )//insert the ordeer log  
+                                        let newObjectSet = {
+                                            status                      :   'ERROR',
+                                        }
+                                        helperCon.updateOrder(order_id,  newObjectSet, 'order_binance')
+                                        console.log(error)
+                                    }
+                                }
+                            }
                         }else if(sellOrder[orderIndex]['quantity_behaviour'] == 'percentage'){
 
                             let percentage  =  await helperCon.getBalancePercentage(user_id, buy_symbol, quantity);  // in this case buy_symbol mean sell this and use wallet mean buy this 
-                            if(buy_symbol == 'BTCUSDT' || buy_symbol == 'BUSDUSDT'){
+                            if(use_wallet == 'BTCUSDT' || use_wallet == 'BUSDUSDT'){
+                                try{
+                                    let response = await binance.marketBuy(buy_symbol , percentage)
+                                    let newObjectSet = {
+                                        purchased_price_buy_symbol  :   parseFloat(response.price),
+                                        status                      :   response.status,
+                                        order_type                  :   response.type,
+                                        executedQty                 :   parseFloat(response.executedQty),
+                                        binance_order_id            :   response.orderId,
+                                        order_filled_time           :   new Date()
+                                    }
+                                    helperCon.saveOrderLog(order_id, 'order_logs_binance', 'order successfully buy' )//insert the ordeer log  
+                                    helperCon.updateOrder(order_id,  newObjectSet, 'order_binance')
+                                }catch(error){
 
-                                let response = await binance.futuresMarketBuy(use_wallet, percentage)
-                                console.log('response ===>>>>>>>>>>>>', response);
-                                db.collection('test_buy').insertOne(response)
+                                    helperCon.saveOrderLog(order_id, 'order_logs_binance', 'order buy failed due to some issue' )//insert the ordeer log  
+                                    let newObjectSet = {
+                                        status                      :   'ERROR',
+                                    }
+                                    helperCon.updateOrder(order_id,  newObjectSet, 'order_binance')
+                                    console.log(error)
+                                }
                             }else{
                                 
+                                if(buy_symbol == 'BTCUSDT' ||  buy_symbol == 'BUSDUSDT' ){
 
-                                let responseSell = await binance.futuresMarketSell( use_wallet , percentage) ;
-                                console.log('responseSell =>>>>>>>>>>', responseSell);
+                                    let response = await binance.marketSell(use_wallet, percentage)
+                                    let symbolPrice = await helper.getMarketPrice(buy_symbol, 'market_prices_binance')
 
-                                let responseBuy  = await binance.futuresMarketBuy(buy_symbol, percentage)
-                                console.log('responseBuy =>>>>>>>>>>', responseBuy);
+                                    let newObjectSet = {
+                                        purchased_price_buy_symbol  :   symbolPrice.price,
+                                        status                      :   'FILLED',
+                                        order_type                  :   'MARKET',
+                                        executedQty                 :   percentage,
+                                        binance_order_id            :   '',
+                                        order_filled_time           :   new Date()
+                                    }
+                                    helperCon.saveOrderLog(order_id, 'order_logs_binance', 'order successfully buy' )//insert the ordeer log  
+                                    helperCon.updateOrder(order_id,  newObjectSet, 'order_binance')
+                                }else{
+                                    try{
+                                        let response = await binance.marketSell(use_wallet, percentage)
+                                        try{
+                                            let response = await binance.marketBuy(buy_symbol, percentage)
 
-                                db.collection('sell_test').insertOne(responseSell)
-                                db.collection('test_buy_else').insertOne(responseBuy)
-                            }
-                            
-                            let newObjectSet = {
-                                purchased_price_buy_symbol  : "",
-                                status   :  'completed'
-                            }
-                            let collectionName = 'order_binance';
-                            helperCon.updateOrder(order_id,  newObjectSet, collectionName)
+                                            let newObjectSet = {
+                                                purchased_price_buy_symbol  :   parseFloat(response.price),
+                                                status                      :   response.status,
+                                                order_type                  :   response.type,
+                                                executedQty                 :   parseFloat(response.executedQty),
+                                                binance_order_id            :   response.orderId,
+                                                order_filled_time           :   new Date()
+                                            }
+                                            helperCon.saveOrderLog(order_id, 'order_logs_binance', 'order successfully buy' ) //insert the ordeer log  
+                                            helperCon.updateOrder(order_id,  newObjectSet, 'order_binance')
+                                        }catch(error){
 
-                            // console.log('balance percentage calculattion is ==============>>>>>>>>>>>>>>>>>>>>>>>>>>', percentage)
+                                            helperCon.saveOrderLog(order_id, 'order_logs_binance', 'order buy failed due to some issue' ) //insert the ordeer log  
+                                            let newObjectSet = {
+                                                status                      :   'ERROR',
+                                            }
+                                            helperCon.updateOrder(order_id,  newObjectSet, 'order_binance')
+                                            console.log(error);
+                                        }
+                                    }catch(error){
+                                        helperCon.saveOrderLog(order_id, 'order_logs_binance', 'order buy failed due to some issue' ) //insert the ordeer log  
+                                        let newObjectSet = {
+                                            status                      :   'ERROR',
+                                        }
+                                        helperCon.updateOrder(order_id,  newObjectSet, 'order_binance')
+                                        console.log(error);
+                                    }
+                                }
+                            }                            
                         }else{
 
                             console.log('order behaviour is missing we cannot process this order for now sorry!!!!!!!!!')
